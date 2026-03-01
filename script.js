@@ -136,6 +136,18 @@ function bindEvents() {
   document.getElementById('dateFilter').addEventListener('change', handleDateFilter);
   document.getElementById('categoryFilter').addEventListener('change', handleCategoryFilter);
   
+  // 侧边栏搜索功能
+  const sidebarSearch = document.getElementById('sidebarSearch');
+  const sidebarDateFilter = document.getElementById('sidebarDateFilter');
+  
+  if (sidebarSearch) {
+    sidebarSearch.addEventListener('input', handleSearch);
+  }
+  
+  if (sidebarDateFilter) {
+    sidebarDateFilter.addEventListener('change', handleDateFilter);
+  }
+  
   // 分类点击事件
   document.querySelectorAll('.category-item').forEach(item => {
     if (!item.classList.contains('add-category')) {
@@ -197,11 +209,35 @@ async function selectCategory(category) {
 
 // 处理搜索
 async function handleSearch() {
+  // 同步两个搜索框的值
+  const mainSearch = document.getElementById('search');
+  const sidebarSearch = document.getElementById('sidebarSearch');
+  
+  if (mainSearch && sidebarSearch) {
+    if (event.target === mainSearch) {
+      sidebarSearch.value = mainSearch.value;
+    } else if (event.target === sidebarSearch) {
+      mainSearch.value = sidebarSearch.value;
+    }
+  }
+  
   await renderNotes();
 }
 
 // 处理日期筛选
 async function handleDateFilter() {
+  // 同步两个日期选择器的值
+  const mainDateFilter = document.getElementById('dateFilter');
+  const sidebarDateFilter = document.getElementById('sidebarDateFilter');
+  
+  if (mainDateFilter && sidebarDateFilter) {
+    if (event.target === mainDateFilter) {
+      sidebarDateFilter.value = mainDateFilter.value;
+    } else if (event.target === sidebarDateFilter) {
+      mainDateFilter.value = sidebarDateFilter.value;
+    }
+  }
+  
   await renderNotes();
 }
 
