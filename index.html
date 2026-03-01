@@ -8,61 +8,102 @@
 </head>
 <body>
 <div class="app-container">
-  <!-- 左侧菜单 -->
-  <div class="sidebar">
-    <h2>📝 个人笔记</h2>
-    
-    <!-- 主题切换 -->
-    <div class="theme-box">
-      <label>主题色：</label>
-      <input type="color" id="themeColor" value="#2196F3">
+  <!-- 顶部工具栏 -->
+  <div class="top-bar">
+    <div class="top-left">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <h1>个人笔记系统</h1>
     </div>
-
-    <!-- 菜单选项 -->
-    <div class="menu-section">
-      <h3>功能菜单</h3>
-      <button onclick="showSection('search')" class="menu-btn">🔍 查询</button>
-      <button onclick="showSection('add')" class="menu-btn">➕ 新增</button>
-      <button onclick="showSection('dateView')" class="menu-btn">📅 日期视图</button>
-    </div>
-
-    <!-- 搜索功能 -->
-    <div id="search-section" class="section-content">
-      <input type="text" id="search" placeholder="搜索内容...">
-      <button onclick="searchNotes()" class="search-btn">🔍 搜索</button>
-      <select id="categoryFilter" onchange="renderNotes()">
-        <option value="">全部分类</option>
+    <div class="top-right">
+      <input type="text" id="search" placeholder="搜索内容输入" class="search-input">
+      <input type="date" id="dateFilter" placeholder="选择日期" class="date-input">
+      <select id="categoryFilter" class="category-select">
+        <option value="">选择分类</option>
       </select>
+      <input type="color" id="themeColor" value="#2196F3" class="theme-picker">
     </div>
+  </div>
 
-    <!-- 新增笔记 -->
-    <div id="add-section" class="section-content" style="display: none;">
-      <input type="text" id="title" placeholder="标题">
-      <textarea id="content" placeholder="内容"></textarea>
-      <input type="text" id="category" placeholder="分类（如：工作/生活/学习）">
-      <input type="file" id="imgUpload" accept="image/*" multiple>
-      <button onclick="saveNote()">保存笔记</button>
+  <!-- 左侧可折叠侧边栏 -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3>分类列表</h3>
+    </div>
+    <div class="sidebar-content">
+      <div class="category-item active" data-category="">
+        <span class="category-icon">📋</span>
+        <span class="category-name">全部笔记</span>
+        <span class="category-count" id="total-count">0</span>
+      </div>
+      <div class="category-item" data-category="工作">
+        <span class="category-icon">💼</span>
+        <span class="category-name">工作</span>
+        <span class="category-count" id="work-count">0</span>
+      </div>
+      <div class="category-item" data-category="生活">
+        <span class="category-icon">🏠</span>
+        <span class="category-name">生活</span>
+        <span class="category-count" id="life-count">0</span>
+      </div>
+      <div class="category-item" data-category="学习">
+        <span class="category-icon">📚</span>
+        <span class="category-name">学习</span>
+        <span class="category-count" id="study-count">0</span>
+      </div>
+      <div class="category-item add-category" onclick="showAddDialog()">
+        <span class="category-icon">➕</span>
+        <span class="category-name">新增</span>
+      </div>
     </div>
   </div>
 
   <!-- 主内容区域 -->
-  <div class="main-content">
-    <div id="current-section-title">📋 笔记列表</div>
-    
-    <!-- 笔记列表 -->
-    <div id="notesList"></div>
-    
-    <!-- 日期视图 -->
-    <div id="dateView-section" style="display: none;">
-      <div id="dateGroups"></div>
+  <div class="main-content" id="mainContent">
+    <div class="content-header">
+      <h2 id="current-category-title">全部笔记</h2>
+    </div>
+    <div class="notes-grid" id="notesList"></div>
+  </div>
+
+  <!-- 悬浮新增按钮 -->
+  <button class="floating-add-btn" onclick="showAddDialog()">+</button>
+
+  <!-- 新增/编辑笔记对话框 -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">新增笔记</h3>
+        <span class="close" onclick="closeAddDialog()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="title" placeholder="笔记标题" class="form-input">
+        <textarea id="content" placeholder="笔记内容" class="form-textarea"></textarea>
+        <select id="noteCategory" class="form-select">
+          <option value="工作">工作</option>
+          <option value="生活">生活</option>
+          <option value="学习">学习</option>
+        </select>
+        <input type="file" id="imgUpload" accept="image/*" class="form-file">
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeAddDialog()" class="btn-cancel">取消</button>
+        <button onclick="saveNote()" class="btn-save">保存</button>
+      </div>
     </div>
   </div>
 
-  <!-- 详情弹窗 -->
-  <div id="detailModal" class="modal">
+  <!-- 笔记详情对话框 -->
+  <div class="modal" id="detailModal">
     <div class="modal-content">
-      <span class="close" onclick="closeDetail()">&times;</span>
-      <div id="noteDetail"></div>
+      <div class="modal-header">
+        <h3 id="detail-title">笔记详情</h3>
+        <span class="close" onclick="closeDetailDialog()">&times;</span>
+      </div>
+      <div class="modal-body" id="noteDetail">
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeDetailDialog()" class="btn-cancel">关闭</button>
+      </div>
     </div>
   </div>
 </div>
@@ -70,3 +111,4 @@
 <script src="script.js"></script>
 </body>
 </html>
+
