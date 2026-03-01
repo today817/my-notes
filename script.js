@@ -463,6 +463,11 @@ function readFileAsDataURL(file) {
   });
 }
 
+// 编辑笔记
+function editNote(noteId) {
+  showAddDialog(noteId);
+}
+
 // 删除笔记
 async function deleteNote(noteId) {
   if (confirm('确定要删除这条笔记吗？')) {
