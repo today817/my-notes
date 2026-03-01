@@ -7,34 +7,64 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-  <h1>📝 个人笔记</h1>
+<div class="app-container">
+  <!-- 左侧菜单 -->
+  <div class="sidebar">
+    <h2>📝 个人笔记</h2>
+    
+    <!-- 主题切换 -->
+    <div class="theme-box">
+      <label>主题色：</label>
+      <input type="color" id="themeColor" value="#2196F3">
+    </div>
 
-  <!-- 主题切换 -->
-  <div class="theme-box">
-    <label>主题色：</label>
-    <input type="color" id="themeColor" value="#2196F3">
+    <!-- 菜单选项 -->
+    <div class="menu-section">
+      <h3>功能菜单</h3>
+      <button onclick="showSection('search')" class="menu-btn">🔍 查询</button>
+      <button onclick="showSection('add')" class="menu-btn">➕ 新增</button>
+      <button onclick="showSection('dateView')" class="menu-btn">📅 日期视图</button>
+    </div>
+
+    <!-- 搜索功能 -->
+    <div id="search-section" class="section-content">
+      <input type="text" id="search" placeholder="搜索内容...">
+      <button onclick="searchNotes()" class="search-btn">🔍 搜索</button>
+      <select id="categoryFilter" onchange="renderNotes()">
+        <option value="">全部分类</option>
+      </select>
+    </div>
+
+    <!-- 新增笔记 -->
+    <div id="add-section" class="section-content" style="display: none;">
+      <input type="text" id="title" placeholder="标题">
+      <textarea id="content" placeholder="内容"></textarea>
+      <input type="text" id="category" placeholder="分类（如：工作/生活/学习）">
+      <input type="file" id="imgUpload" accept="image/*" multiple>
+      <button onclick="saveNote()">保存笔记</button>
+    </div>
   </div>
 
-  <!-- 搜索筛选 -->
-  <div class="search-box">
-    <input type="text" id="search" placeholder="搜索内容...">
-    <select id="categoryFilter">
-      <option value="">全部分类</option>
-    </select>
+  <!-- 主内容区域 -->
+  <div class="main-content">
+    <div id="current-section-title">📋 笔记列表</div>
+    
+    <!-- 笔记列表 -->
+    <div id="notesList"></div>
+    
+    <!-- 日期视图 -->
+    <div id="dateView-section" style="display: none;">
+      <div id="dateGroups"></div>
+    </div>
   </div>
 
-  <!-- 新增笔记 -->
-  <div class="add-box">
-    <input type="text" id="title" placeholder="标题">
-    <textarea id="content" placeholder="内容"></textarea>
-    <input type="text" id="category" placeholder="分类（如：工作/生活/学习）">
-    <input type="file" id="imgUpload" accept="image/*" multiple>
-    <button onclick="saveNote()">保存笔记</button>
+  <!-- 详情弹窗 -->
+  <div id="detailModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeDetail()">&times;</span>
+      <div id="noteDetail"></div>
+    </div>
   </div>
-
-  <!-- 笔记列表 -->
-  <div id="notesList"></div>
 </div>
 
 <script src="script.js"></script>
