@@ -142,6 +142,11 @@ function bindEvents() {
       item.addEventListener('click', () => {
         const category = item.dataset.category;
         selectCategory(category);
+        
+        // 移动端点击分类后自动关闭侧边栏
+        if (window.innerWidth <= 768) {
+          closeSidebar();
+        }
       });
     }
   });
@@ -151,9 +156,53 @@ function bindEvents() {
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const mainContent = document.getElementById('mainContent');
+  const mobileOverlay = document.getElementById('mobileOverlay');
+  const isMobile = window.innerWidth <= 768;
   
-  sidebar.classList.toggle('collapsed');
-  mainContent.classList.toggle('collapsed');
+  if (isMobile) {
+    // 移动端逻辑：滑出/滑入侧边栏
+    const isOpen = sidebar.classList.contains('show');
+    
+    if (isOpen) {
+      closeSidebar();
+    } else {
+      sidebar.classList.add('show');
+      mobileOverlay.classList.add('show');
+      document.body.style.overflow = 'hidden'; // 防止背景滚动
+    }
+  } else {
+    // 桌面端逻辑：折叠/展开侧边栏
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('collapsed');
+  }
+}
+
+// 关闭侧边栏（移动端）
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const mobileOverlay = document.getElementById('mobileOverlay');
+  
+  sidebar.classList.remove('show');
+  mobileOverlay.classList.remove('show');
+  document.body.style.overflow = ''; // 恢复背景滚动
+}
+
+// 监听窗口大小变化
+window.addEventListener('resize', handleResize);
+
+function handleResize() {
+  const sidebar = document.getElementById('sidebar');
+  const mainContent = document.getElementById('mainContent');
+  const mobileOverlay = document.getElementById('mobileOverlay');
+  const isMobile = window.innerWidth <= 768;
+  
+  if (!isMobile) {
+    // 从移动端切换到桌面端时，重置状态
+    sidebar.classList.remove('show', 'collapsed');
+    mainContent.classList.remove('collapsed');
+    mobileOverlay.classList.remove('show');
+    document.body.style.overflow = '';
+  }
 }
 
 // 选择分类
@@ -375,6 +424,11 @@ async function loadNoteForEdit(noteId) {
 function closeAddDialog() {
   document.getElementById('addModal').classList.remove('show');
   editingNoteId = null;
+}
+
+// 关闭详情对话框
+function closeDetailDialog() {
+  document.getElementById('detailModal').classList.remove('show');
 }
 
 // 保存笔记

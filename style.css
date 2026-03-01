@@ -545,12 +545,30 @@ body {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .top-bar {
+    padding: 8px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  
+  .top-left h1 {
+    font-size: 16px;
+  }
+  
   .sidebar {
     position: fixed;
     left: 0;
     top: 0;
     height: 100vh;
+    width: 280px;
     transform: translateX(-100%);
+    z-index: 999;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.15);
   }
   
   .sidebar.show {
@@ -558,20 +576,116 @@ body {
   }
   
   .main-content {
-    margin-left: 0;
-    padding: 16px;
+    margin-left: 0 !important;
+    padding: 12px;
+    min-height: calc(100vh - 56px);
   }
   
   .notes-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
   
   .top-right {
     display: none;
   }
   
+  .floating-add-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
   .detail-meta {
     flex-direction: column;
     gap: 8px;
+  }
+  
+  .note-card {
+    padding: 16px;
+  }
+  
+  .note-title {
+    font-size: 15px;
+  }
+  
+  .note-content {
+    font-size: 13px;
+    -webkit-line-clamp: 2;
+  }
+  
+  .content-header h2 {
+    font-size: 20px;
+  }
+}
+
+/* 平板设备适配 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+  
+  .sidebar.collapsed {
+    width: 60px;
+  }
+  
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  
+  .main-content {
+    padding: 20px;
+  }
+}
+
+/* 桌面端优化 */
+@media (min-width: 1025px) {
+  .app-container {
+    max-width: 1400px;
+    margin: 10px auto;
+    height: calc(100vh - 20px);
+  }
+  
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  }
+}
+
+/* 侧边栏动画 */
+.sidebar {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 移动端遮罩层 */
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+}
+
+.mobile-overlay.show {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-overlay.show {
+    display: block;
   }
 }
