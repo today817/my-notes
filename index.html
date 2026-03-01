@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的笔记</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <h1>📝 个人笔记</h1>
+
+  <!-- 主题切换 -->
+  <div class="theme-box">
+    <label>主题色：</label>
+    <input type="color" id="themeColor" value="#2196F3">
+  </div>
+
+  <!-- 搜索筛选 -->
+  <div class="search-box">
+    <input type="text" id="search" placeholder="搜索内容...">
+    <select id="categoryFilter">
+      <option value="">全部分类</option>
+    </select>
+  </div>
+
+  <!-- 新增笔记 -->
+  <div class="add-box">
+    <input type="text" id="title" placeholder="标题">
+    <textarea id="content" placeholder="内容"></textarea>
+    <input type="text" id="category" placeholder="分类（如：工作/生活/学习）">
+    <input type="file" id="imgUpload" accept="image/*" multiple>
+    <button onclick="saveNote()">保存笔记</button>
+  </div>
+
+  <!-- 笔记列表 -->
+  <div id="notesList"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
