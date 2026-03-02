@@ -7,6 +7,9 @@ const STORE_NAME = 'notes';
 let currentCategory = '';
 let editingNoteId = null;
 let db = null;
+let touchStartX = 0;
+let touchStartY = 0;
+let isScrolling = false;
 
 // 检测是否在iOS设备上
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -54,6 +57,9 @@ function initDB() {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          // 创建索引以提高查询性能
+          store.createIndex('by_category', 'category', { unique: false });
+          store.createIndex('by_date', 'date', { unique: false });
           safeLog('创建对象存储成功');
         }
       };
@@ -116,6 +122,17 @@ function deleteNoteFromLocalStorage(id) {
   }
 }
 
+// 从localStorage获取特定笔记
+function getNoteFromLocalStorage(id) {
+  try {
+    const notes = getAllNotesFromLocalStorage();
+    return notes.find(n => n.id === id);
+  } catch (error) {
+    safeLog('从localStorage获取笔记失败:', error);
+    return null;
+  }
+}
+
 async function getAllNotes() {
   const database = await getDB();
   
@@ -137,6 +154,37 @@ async function getAllNotes() {
     } catch (error) {
       safeLog('IndexedDB操作失败，切换到localStorage:', error);
       resolve(getAllNotesFromLocalStorage());
+    }
+  });
+}
+
+async function getNoteById(id) {
+  const database = await getDB();
+  
+  if (database.type === 'localStorage') {
+    return getNoteFromLocalStorage(id);
+  }
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = database.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(id);
+      
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = (event) => {
+        safeLog('获取笔记失败:', event.target.error);
+        // 如果IndexedDB失败，尝试使用localStorage
+        try {
+          const note = getNoteFromLocalStorage(id);
+          resolve(note);
+        } catch (localError) {
+          reject(event.target.error);
+        }
+      };
+    } catch (error) {
+      safeLog('IndexedDB操作失败，切换到localStorage:', error);
+      resolve(getNoteFromLocalStorage(id));
     }
   });
 }
@@ -413,6 +461,46 @@ function bindEvents() {
       }, { passive: false });
     });
     
+    // 保存按钮事件
+    const saveBtn = document.getElementById('saveNote');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', saveNote);
+      saveBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        saveNote();
+      }, { passive: false });
+    }
+    
+    // 取消按钮事件
+    const cancelBtn = document.getElementById('cancelNote');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        document.getElementById('noteModal').classList.remove('show');
+        resetForm();
+      });
+      
+      cancelBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        document.getElementById('noteModal').classList.remove('show');
+        resetForm();
+      }, { passive: false });
+    }
+    
+    // 移动端导航按钮事件
+    const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
+    mobileNavBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        handleMobileNav(action);
+      });
+      
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const action = btn.dataset.action;
+        handleMobileNav(action);
+      }, { passive: false });
+    });
+    
     safeLog('事件绑定成功');
   } catch (error) {
     safeLog('绑定事件时发生错误:', error);
@@ -503,568 +591,516 @@ async function handleDateFilter() {
 
 // 处理分类筛选
 async function handleCategoryFilter() {
-  const filterCategory = document.getElementById('categoryFilter').value;
-  if (filterCategory) {
-    await selectCategory(filterCategory);
-  }
-}
-
-// 渲染笔记
-async function renderNotes() {
-  const notes = await getAllNotes();
-  const searchTerm = document.getElementById('search').value.toLowerCase();
-  const dateFilter = document.getElementById('dateFilter').value;
-  const categoryFilter = document.getElementById('categoryFilter').value;
+  const categoryFilter = document.getElementById('categoryFilter');
+  const category = categoryFilter.value;
   
-  // 应用筛选
-  let filteredNotes = notes.filter(note => {
-    // 搜索筛选
-    const matchesSearch = !searchTerm || 
-      note.title.toLowerCase().includes(searchTerm) || 
-      note.content.toLowerCase().includes(searchTerm);
-    
-    // 日期筛选
-    const matchesDate = !dateFilter || 
-      note.createDate === dateFilter || 
-      new Date(note.createTime).toISOString().split('T')[0] === dateFilter;
-    
-    // 分类筛选
-    const matchesCategory = !currentCategory || note.category === currentCategory;
-    const matchesFilterCategory = !categoryFilter || note.category === categoryFilter;
-    
-    return matchesSearch && matchesDate && matchesCategory && matchesFilterCategory;
+  // 更新侧边栏选中状态
+  document.querySelectorAll('.category-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.dataset.category === category) {
+      item.classList.add('active');
+    }
   });
   
-  // 按时间倒序排列
-  filteredNotes.sort((a, b) => new Date(b.createTime || b.id) - new Date(a.createTime || a.id));
+  currentCategory = category;
   
-  // 渲染笔记卡片
-  const container = document.getElementById('notesList');
-  container.innerHTML = '';
+  // 更新标题
+  const title = document.getElementById('current-category-title');
+  switch(category) {
+    case '':
+      title.textContent = '全部笔记';
+      break;
+    case '工作':
+      title.textContent = '工作笔记';
+      break;
+    case '生活':
+      title.textContent = '生活笔记';
+      break;
+    case '学习':
+      title.textContent = '学习笔记';
+      break;
+    default:
+      title.textContent = category + '笔记';
+  }
   
-  if (filteredNotes.length === 0) {
+  await renderNotes();
+}
+
+// 渲染笔记列表
+async function renderNotes() {
+  try {
+    const notes = await getAllNotes();
+    const container = document.getElementById('notesList');
+    const searchInput = document.getElementById('search');
+    const dateFilter = document.getElementById('dateFilter');
+    
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const dateFilterValue = dateFilter ? dateFilter.value : '';
+    
+    // 筛选笔记
+    let filteredNotes = notes;
+    
+    // 按分类筛选
+    if (currentCategory) {
+      filteredNotes = filteredNotes.filter(note => note.category === currentCategory);
+    }
+    
+    // 按搜索词筛选
+    if (searchTerm) {
+      filteredNotes = filteredNotes.filter(note => 
+        note.title.toLowerCase().includes(searchTerm) || 
+        note.content.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // 按日期筛选
+    if (dateFilterValue) {
+      const filterDate = new Date(dateFilterValue);
+      filterDate.setHours(0, 0, 0, 0);
+      
+      filteredNotes = filteredNotes.filter(note => {
+        const noteDate = new Date(note.date);
+        noteDate.setHours(0, 0, 0, 0);
+        return noteDate.getTime() === filterDate.getTime();
+      });
+    }
+    
+    // 按日期排序（最新的在前）
+    filteredNotes.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    if (filteredNotes.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>暂无笔记</p>
+          <button onclick="showAddDialog()" class="add-note-btn">
+            <i class="fa fa-plus"></i> 添加笔记
+          </button>
+        </div>
+      `;
+      
+      // 绑定新添加按钮的触摸事件
+      const addBtn = container.querySelector('.add-note-btn');
+      if (addBtn) {
+        addBtn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          showAddDialog();
+        }, { passive: false });
+      }
+    } else {
+      container.innerHTML = filteredNotes.map(note => `
+        <div class="note-card" data-id="${note.id}" 
+             ontouchstart="handleNoteTouchStart(event)" 
+             ontouchmove="handleNoteTouchMove(event)" 
+             ontouchend="handleNoteTouchEnd(event)">
+          <div class="note-header">
+            <h3 class="note-title">${escapeHtml(note.title)}</h3>
+            <span class="note-category ${getCategoryClass(note.category)}">${escapeHtml(note.category)}</span>
+          </div>
+          <p class="note-content">${escapeHtml(truncateText(note.content, 100))}</p>
+          <div class="note-footer">
+            <span class="note-date">${formatDate(note.date)}</span>
+            <div class="note-actions">
+              <button onclick="editNote('${note.id}')" class="action-btn edit-btn" title="编辑">
+                <i class="fa fa-pencil"></i>
+              </button>
+              <button onclick="deleteNote('${note.id}')" class="action-btn delete-btn" title="删除">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      
+      // 重新绑定笔记卡片的事件
+      bindNoteCardEvents();
+    }
+    
+    // 更新分类计数
+    await updateCategoryCounts();
+    
+  } catch (error) {
+    safeLog('渲染笔记失败:', error);
+    const container = document.getElementById('notesList');
     container.innerHTML = `
       <div class="empty-state">
-        <p>暂无笔记，点击右下角"+"按钮添加</p>
+        <p>加载失败，请刷新页面重试</p>
       </div>
     `;
-    return;
   }
+}
+
+// 绑定笔记卡片事件
+function bindNoteCardEvents() {
+  const noteCards = document.querySelectorAll('.note-card');
   
-  filteredNotes.forEach(note => {
-    const card = createNoteCard(note);
-    container.appendChild(card);
+  noteCards.forEach(card => {
+    // 编辑按钮事件
+    const editBtn = card.querySelector('.edit-btn');
+    if (editBtn) {
+      editBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const noteId = card.dataset.id;
+        editNote(noteId);
+      }, { passive: false });
+    }
+    
+    // 删除按钮事件
+    const deleteBtn = card.querySelector('.delete-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const noteId = card.dataset.id;
+        deleteNote(noteId);
+      }, { passive: false });
+    }
   });
 }
 
-// 创建笔记卡片
-function createNoteCard(note) {
+// 触摸事件处理 - 防止滑动时打开笔记
+function handleNoteTouchStart(event) {
+  touchStartX = event.touches[0].clientX;
+  touchStartY = event.touches[0].clientY;
+  isScrolling = false;
+}
+
+function handleNoteTouchMove(event) {
+  if (!touchStartX || !touchStartY) return;
+  
+  const touchX = event.touches[0].clientX;
+  const touchY = event.touches[0].clientY;
+  
+  const deltaX = Math.abs(touchX - touchStartX);
+  const deltaY = Math.abs(touchY - touchStartY);
+  
+  // 如果移动距离超过10px，认为是滚动操作
+  if (deltaX > 10 || deltaY > 10) {
+    isScrolling = true;
+  }
+}
+
+function handleNoteTouchEnd(event) {
+  if (!isScrolling) {
+    // 如果不是滚动操作，打开笔记详情
+    const noteCard = event.currentTarget;
+    const noteId = noteCard.dataset.id;
+    viewNote(noteId);
+  }
+  
+  // 重置触摸状态
+  touchStartX = 0;
+  touchStartY = 0;
+  isScrolling = false;
+}
+
+// 查看笔记详情
+async function viewNote(id) {
   try {
-    const card = document.createElement('div');
-    card.className = 'note-card';
-    
-    const date = note.createDate || new Date(note.id).toLocaleDateString('zh-CN');
-    const time = note.createTime ? new Date(note.createTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
-    
-    // 使用安全的HTML构建
-    const headerDiv = document.createElement('div');
-    headerDiv.className = 'note-header';
-    
-    const titleH3 = document.createElement('h3');
-    titleH3.className = 'note-title';
-    titleH3.textContent = note.title || '无标题';
-    
-    const categorySpan = document.createElement('span');
-    categorySpan.className = 'note-category-badge';
-    categorySpan.textContent = note.category || '未分类';
-    
-    headerDiv.appendChild(titleH3);
-    headerDiv.appendChild(categorySpan);
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'note-content';
-    contentDiv.textContent = note.content || '';
-    
-    const footerDiv = document.createElement('div');
-    footerDiv.className = 'note-footer';
-    
-    const dateDiv = document.createElement('div');
-    dateDiv.className = 'note-date';
-    
-    const dateSpan = document.createElement('span');
-    dateSpan.textContent = `📅 ${date}`;
-    
-    dateDiv.appendChild(dateSpan);
-    
-    if (time) {
-      const timeSpan = document.createElement('span');
-      timeSpan.textContent = `⏰ ${time}`;
-      dateDiv.appendChild(timeSpan);
+    const note = await getNoteById(id);
+    if (!note) {
+      alert('笔记不存在');
+      return;
     }
     
-    const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'note-actions';
+    const modal = document.getElementById('viewModal');
+    const title = modal.querySelector('.modal-title');
+    const content = modal.querySelector('.modal-content');
+    const category = modal.querySelector('.note-category');
+    const date = modal.querySelector('.note-date');
     
-    const editBtn = document.createElement('button');
-    editBtn.className = 'note-action-btn';
-    editBtn.title = '编辑';
-    editBtn.textContent = '✏️';
-    editBtn.onclick = () => editNote(note.id);
+    title.textContent = escapeHtml(note.title);
+    content.textContent = escapeHtml(note.content);
+    category.textContent = escapeHtml(note.category);
+    category.className = `note-category ${getCategoryClass(note.category)}`;
+    date.textContent = formatDate(note.date);
     
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'note-action-btn';
-    deleteBtn.title = '删除';
-    deleteBtn.textContent = '🗑️';
-    deleteBtn.onclick = () => deleteNote(note.id);
+    modal.classList.add('show');
     
-    actionsDiv.appendChild(editBtn);
-    actionsDiv.appendChild(deleteBtn);
-    
-    footerDiv.appendChild(dateDiv);
-    footerDiv.appendChild(actionsDiv);
-    
-    card.appendChild(headerDiv);
-    card.appendChild(contentDiv);
-    
-    // 处理图片
-    if (note.img) {
-      try {
-        const img = document.createElement('img');
-        img.src = note.img;
-        img.className = 'note-image';
-        img.alt = '笔记图片';
-        img.onerror = () => {
-          safeLog('图片加载失败:', note.img);
-          img.style.display = 'none';
-        };
-        card.appendChild(img);
-      } catch (imgError) {
-        safeLog('创建图片元素失败:', imgError);
-      }
-    }
-    
-    card.appendChild(footerDiv);
-    
-    // 更可靠的触摸事件处理方案
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchStartTime = 0;
-    let hasMoved = false;
-    let clickPrevented = false;
-    
-    // 处理触摸开始
-    const handleTouchStart = (e) => {
-      // 如果点击的是操作按钮，不处理
-      if (e.target.closest('.note-actions')) return;
-      
-      const touch = e.touches[0];
-      touchStartX = touch.clientX;
-      touchStartY = touch.clientY;
-      touchStartTime = Date.now();
-      hasMoved = false;
-      clickPrevented = false;
-      
-      // 重置状态
-      card.dataset.touchHandled = 'false';
-    };
-    
-    // 处理触摸移动
-    const handleTouchMove = (e) => {
-      // 如果点击的是操作按钮，不处理
-      if (e.target.closest('.note-actions')) return;
-      
-      const touch = e.touches[0];
-      const deltaX = Math.abs(touch.clientX - touchStartX);
-      const deltaY = Math.abs(touch.clientY - touchStartY);
-      
-      // 如果移动距离超过5px，认为是滚动操作
-      if (deltaX > 5 || deltaY > 5) {
-        hasMoved = true;
-        
-        // 标记这个触摸事件已经被处理为滚动
-        card.dataset.touchHandled = 'true';
-        
-        // 如果这是第一次检测到移动，阻止后续的点击事件
-        if (!clickPrevented) {
-          clickPrevented = true;
-          
-          // 立即阻止默认行为，防止滚动时触发点击
-          e.preventDefault();
-        }
-      }
-    };
-    
-    // 处理触摸结束
-    const handleTouchEnd = (e) => {
-      // 如果点击的是操作按钮，不处理
-      if (e.target.closest('.note-actions')) return;
-      
-      const touchEndTime = Date.now();
-      const touchDuration = touchEndTime - touchStartTime;
-      
-      // 只有当没有移动且触摸时间较短时，才认为是点击
-      if (!hasMoved && touchDuration < 300) {
-        // 这是一个有效的点击
-        e.preventDefault();
-        showNoteDetail(note);
-      }
-    };
-    
-    // 处理点击事件
-    const handleCardClick = (e) => {
-      // 如果点击的是操作按钮，不处理
-      if (e.target.closest('.note-actions')) return;
-      
-      // 检查这个点击是否已经被触摸事件处理过
-      // 或者是否是由触摸滚动触发的虚假点击
-      if (card.dataset.touchHandled === 'true') {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      
-      // 正常的点击事件
-      showNoteDetail(note);
-    };
-    
-    // 阻止触摸事件冒泡到父元素
-    const handleTouchStopPropagation = (e) => {
-      if (!e.target.closest('.note-actions')) {
-        e.stopPropagation();
-      }
-    };
-    
-    // 清除所有现有的事件监听器，避免重复绑定
-    card.replaceWith(card.cloneNode(true));
-    card = card.previousSibling || card;
-    
-    // 重新获取编辑和删除按钮的引用
-    const newEditBtn = card.querySelector('.note-action-btn[title="编辑"]');
-    const newDeleteBtn = card.querySelector('.note-action-btn[title="删除"]');
-    
-    if (newEditBtn) {
-      newEditBtn.onclick = () => editNote(note.id);
-    }
-    
-    if (newDeleteBtn) {
-      newDeleteBtn.onclick = () => deleteNote(note.id);
-    }
-    
-    // 添加新的事件监听器
-    card.addEventListener('touchstart', handleTouchStart, { passive: false });
-    card.addEventListener('touchmove', handleTouchMove, { passive: false });
-    card.addEventListener('touchend', handleTouchEnd, { passive: false });
-    card.addEventListener('touchcancel', () => {
-      hasMoved = false;
-      clickPrevented = false;
-    }, { passive: true });
-    card.addEventListener('click', handleCardClick, { passive: false });
-    
-    // 为编辑和删除按钮添加事件监听器
-    if (newEditBtn) {
-      newEditBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        editNote(note.id);
-      }, { passive: false });
-    }
-    
-    if (newDeleteBtn) {
-      newDeleteBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        deleteNote(note.id);
-      }, { passive: false });
-    }
-    
-    // 编辑和删除按钮的事件处理已在上方实现
-    
-    return card;
   } catch (error) {
-    safeLog('创建笔记卡片失败:', error);
-    // 返回一个简单的错误卡片
-    const errorCard = document.createElement('div');
-    errorCard.className = 'note-card';
-    errorCard.textContent = '加载笔记失败';
-    return errorCard;
+    safeLog('查看笔记失败:', error);
+    alert('查看笔记失败');
   }
 }
 
-// 显示笔记详情
-function showNoteDetail(note) {
-  const modal = document.getElementById('detailModal');
-  const title = document.getElementById('detail-title');
-  const content = document.getElementById('noteDetail');
-  
-  title.textContent = note.title;
-  
-  const date = note.createDate || new Date(note.id).toLocaleDateString('zh-CN');
-  const time = note.createTime ? new Date(note.createTime).toLocaleTimeString('zh-CN') : '';
-  
-  content.innerHTML = `
-    <div class="detail-content">
-      <p class="detail-meta">
-        <span class="detail-category">分类：${note.category || '未分类'}</span>
-        <span class="detail-date">日期：${date}</span>
-        ${time ? `<span class="detail-time">时间：${time}</span>` : ''}
-      </p>
-      <div class="detail-text">${escapeHtml(note.content).replace(/\n/g, '<br>')}</div>
-      ${note.img ? `<img src="${note.img}" class="detail-image" alt="笔记图片">` : ''}
-      ${note.comments && note.comments.length > 0 ? `
-        <div class="detail-comments">
-          <h4>评论 (${note.comments.length})</h4>
-          ${note.comments.map(comment => `<div class="comment">${escapeHtml(comment)}</div>`).join('')}
-        </div>
-      ` : ''}
-    </div>
-  `;
-  
+// 编辑笔记
+async function editNote(id) {
+  try {
+    const note = await getNoteById(id);
+    if (!note) {
+      alert('笔记不存在');
+      return;
+    }
+    
+    const titleInput = document.getElementById('noteTitle');
+    const contentTextarea = document.getElementById('noteContent');
+    const categorySelect = document.getElementById('noteCategory');
+    
+    titleInput.value = note.title;
+    contentTextarea.value = note.content;
+    categorySelect.value = note.category;
+    
+    editingNoteId = id;
+    
+    const modal = document.getElementById('noteModal');
+    const modalTitle = modal.querySelector('.modal-title');
+    modalTitle.textContent = '编辑笔记';
+    
+    modal.classList.add('show');
+    
+  } catch (error) {
+    safeLog('编辑笔记失败:', error);
+    alert('编辑笔记失败');
+  }
+}
+
+// 删除笔记
+async function deleteNote(id) {
+  if (confirm('确定要删除这条笔记吗？')) {
+    try {
+      await deleteNoteFromDB(id);
+      await renderNotes();
+      await updateCategoryCounts();
+      safeLog('笔记删除成功');
+    } catch (error) {
+      safeLog('删除笔记失败:', error);
+      alert('删除笔记失败');
+    }
+  }
+}
+
+// 显示添加笔记对话框
+function showAddDialog() {
+  resetForm();
+  const modal = document.getElementById('noteModal');
+  const modalTitle = modal.querySelector('.modal-title');
+  modalTitle.textContent = '添加笔记';
   modal.classList.add('show');
-}
-
-// 关闭详情对话框
-function closeDetailDialog() {
-  document.getElementById('detailModal').classList.remove('show');
-}
-
-// 显示新增对话框
-function showAddDialog(noteId = null) {
-  const modal = document.getElementById('addModal');
-  const title = document.getElementById('modal-title');
-  const formTitle = document.getElementById('title');
-  const formContent = document.getElementById('content');
-  const formCategory = document.getElementById('noteCategory');
-  const formFile = document.getElementById('imgUpload');
-  
-  editingNoteId = noteId;
-  
-  // 重置表单
-  formTitle.value = '';
-  formContent.value = '';
-  formCategory.value = currentCategory || '工作';
-  formFile.value = '';
-  
-  if (noteId) {
-    title.textContent = '编辑笔记';
-    // 加载笔记数据
-    loadNoteForEdit(noteId);
-  } else {
-    title.textContent = '新增笔记';
-  }
-  
-  modal.classList.add('show');
-}
-
-// 加载笔记进行编辑
-async function loadNoteForEdit(noteId) {
-  const notes = await getAllNotes();
-  const note = notes.find(n => n.id === noteId);
-  
-  if (note) {
-    document.getElementById('title').value = note.title;
-    document.getElementById('content').value = note.content;
-    document.getElementById('noteCategory').value = note.category || '工作';
-  }
-}
-
-// 关闭新增对话框
-function closeAddDialog() {
-  document.getElementById('addModal').classList.remove('show');
-  editingNoteId = null;
-}
-
-// 关闭详情对话框
-function closeDetailDialog() {
-  document.getElementById('detailModal').classList.remove('show');
 }
 
 // 保存笔记
 async function saveNote() {
-  const title = document.getElementById('title').value.trim();
-  const content = document.getElementById('content').value.trim();
-  const category = document.getElementById('noteCategory').value;
-  const file = document.getElementById('imgUpload').files[0];
-  
-  if (!title) {
-    alert('请填写笔记标题');
-    return;
-  }
-  
-  if (!content) {
-    alert('请填写笔记内容');
-    return;
-  }
-  
-  let img = '';
-  let existingNote = null;
-  
-  // 如果是编辑模式，先获取现有笔记数据
-  if (editingNoteId) {
-    const notes = await getAllNotes();
-    existingNote = notes.find(n => n.id === editingNoteId);
-    if (existingNote) {
-      img = existingNote.img || '';
-    }
-  }
-  
-  // 如果有新文件，读取新图片
-  if (file) {
-    try {
-      img = await readFileAsDataURL(file);
-    } catch (error) {
-      console.error('读取图片文件失败:', error);
-      alert('图片文件读取失败，请重试');
+  try {
+    const titleInput = document.getElementById('noteTitle');
+    const contentTextarea = document.getElementById('noteContent');
+    const categorySelect = document.getElementById('noteCategory');
+    
+    const title = titleInput.value.trim();
+    const content = contentTextarea.value.trim();
+    const category = categorySelect.value;
+    
+    if (!title) {
+      alert('请输入笔记标题');
+      titleInput.focus();
       return;
     }
-  }
-  
-  const noteData = {
-    title,
-    content,
-    category,
-    img,
-    comments: existingNote ? existingNote.comments : [],
-    createTime: existingNote ? existingNote.createTime : new Date().toISOString(),
-    createDate: existingNote ? existingNote.createDate : new Date().toLocaleDateString('zh-CN')
-  };
-  
-  if (editingNoteId) {
-    noteData.id = editingNoteId;
-  } else {
-    noteData.id = Date.now();
-  }
-  
-  try {
-    await saveNoteToDB(noteData);
-    closeAddDialog();
-    await renderNotes();
-    await updateCategoryCounts();
-  } catch (error) {
-    console.error('保存笔记失败:', error);
-    alert('保存失败，请重试');
-  }
-}
-
-// 读取文件为DataURL - 增强版，支持iOS设备
-function readFileAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    try {
-      // 检查文件大小限制（10MB）
-      const maxSize = 10 * 1024 * 1024;
-      if (file.size > maxSize) {
-        safeLog('文件大小超过限制');
-        alert('图片大小不能超过10MB');
-        reject(new Error('文件大小超过限制'));
-        return;
-      }
-
-      // 检查文件类型
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
-      if (!allowedTypes.includes(file.type)) {
-        safeLog('不支持的文件类型:', file.type);
-        alert('只支持JPG、PNG、GIF、WebP格式的图片');
-        reject(new Error('不支持的文件类型'));
-        return;
-      }
-
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        try {
-          const result = e.target.result;
-          // 检查结果是否有效
-          if (!result || typeof result !== 'string' || !result.startsWith('data:image')) {
-            safeLog('文件读取结果无效');
-            reject(new Error('文件读取失败'));
-            return;
-          }
-          
-          // 对于iOS设备，可能需要额外的处理
-          if (isIOS) {
-            safeLog('iOS设备文件读取成功，大小:', result.length);
-          }
-          
-          resolve(result);
-        } catch (loadError) {
-          safeLog('处理文件读取结果时发生错误:', loadError);
-          reject(loadError);
-        }
-      };
-      
-      reader.onerror = (e) => {
-        safeLog('文件读取失败:', e);
-        reject(new Error('文件读取失败'));
-      };
-      
-      reader.onabort = () => {
-        safeLog('文件读取被中止');
-        reject(new Error('文件读取被中止'));
-      };
-      
-      // 开始读取文件
-      reader.readAsDataURL(file);
-      
-    } catch (error) {
-      safeLog('创建文件读取器时发生错误:', error);
-      reject(error);
+    
+    if (!content) {
+      alert('请输入笔记内容');
+      contentTextarea.focus();
+      return;
     }
-  });
-}
-
-// 编辑笔记
-function editNote(noteId) {
-  showAddDialog(noteId);
-}
-
-// 删除笔记
-async function deleteNote(noteId) {
-  if (confirm('确定要删除这条笔记吗？')) {
-    await deleteNoteFromDB(noteId);
+    
+    const note = {
+      id: editingNoteId || generateId(),
+      title,
+      content,
+      category,
+      date: new Date().toISOString()
+    };
+    
+    await saveNoteToDB(note);
+    
+    const modal = document.getElementById('noteModal');
+    modal.classList.remove('show');
+    
     await renderNotes();
     await updateCategoryCounts();
+    
+    resetForm();
+    safeLog('笔记保存成功');
+    
+  } catch (error) {
+    safeLog('保存笔记失败:', error);
+    alert('保存笔记失败');
   }
+}
+
+// 重置表单
+function resetForm() {
+  const titleInput = document.getElementById('noteTitle');
+  const contentTextarea = document.getElementById('noteContent');
+  const categorySelect = document.getElementById('noteCategory');
+  
+  titleInput.value = '';
+  contentTextarea.value = '';
+  categorySelect.value = '工作';
+  editingNoteId = null;
 }
 
 // 更新分类计数
 async function updateCategoryCounts() {
-  const notes = await getAllNotes();
-  
-  const counts = {
-    total: notes.length,
-    work: notes.filter(n => n.category === '工作').length,
-    life: notes.filter(n => n.category === '生活').length,
-    study: notes.filter(n => n.category === '学习').length
-  };
-  
-  document.getElementById('total-count').textContent = counts.total;
-  document.getElementById('work-count').textContent = counts.work;
-  document.getElementById('life-count').textContent = counts.life;
-  document.getElementById('study-count').textContent = counts.study;
+  try {
+    const notes = await getAllNotes();
+    const counts = {
+      '': notes.length,
+      '工作': 0,
+      '生活': 0,
+      '学习': 0
+    };
+    
+    notes.forEach(note => {
+      if (counts.hasOwnProperty(note.category)) {
+        counts[note.category]++;
+      }
+    });
+    
+    // 更新侧边栏分类计数
+    document.querySelectorAll('.category-item').forEach(item => {
+      const category = item.dataset.category;
+      const countSpan = item.querySelector('.category-count');
+      if (countSpan && counts.hasOwnProperty(category)) {
+        countSpan.textContent = counts[category];
+      }
+    });
+    
+  } catch (error) {
+    safeLog('更新分类计数失败:', error);
+  }
 }
 
-// HTML转义
+// 处理移动端导航
+function handleMobileNav(action) {
+  switch (action) {
+    case 'add':
+      showAddDialog();
+      break;
+    case 'search':
+      // 聚焦搜索框
+      const searchInput = document.getElementById('search');
+      if (searchInput) {
+        searchInput.focus();
+      }
+      break;
+    case 'filter':
+      // 显示筛选面板（如果有）
+      break;
+    default:
+      break;
+  }
+}
+
+// 工具函数
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 1) {
+    return '今天';
+  } else if (diffDays === 2) {
+    return '昨天';
+  } else if (diffDays <= 7) {
+    return `${diffDays - 1}天前`;
+  } else {
+    return date.toLocaleDateString('zh-CN');
+  }
+}
+
+function truncateText(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
-// 点击模态框外部关闭
-window.onclick = (event) => {
-  const modals = document.querySelectorAll('.modal');
-  modals.forEach(modal => {
-    if (event.target === modal) {
-      modal.classList.remove('show');
-    }
-  });
-};
+function getCategoryClass(category) {
+  switch (category) {
+    case '工作':
+      return 'category-work';
+    case '生活':
+      return 'category-life';
+    case '学习':
+      return 'category-study';
+    default:
+      return 'category-other';
+  }
+}
 
-// 按ESC键关闭模态框
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
+// 页面滚动优化
+let ticking = false;
+
+function updateOnScroll() {
+  // 在这里可以添加滚动时的优化逻辑
+  ticking = false;
+}
+
+function requestTick() {
+  if (!ticking) {
+    requestAnimationFrame(updateOnScroll);
+    ticking = true;
+  }
+}
+
+// 添加滚动事件监听器
+window.addEventListener('scroll', requestTick);
+
+// 页面可见性变化处理
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // 页面重新可见时刷新数据
+    renderNotes();
+  }
+});
+
+// 键盘快捷键支持
+document.addEventListener('keydown', (e) => {
+  // Ctrl/Cmd + N: 新建笔记
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+    e.preventDefault();
+    showAddDialog();
+  }
+  
+  // Ctrl/Cmd + F: 搜索
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }
+  
+  // ESC: 关闭模态框
+  if (e.key === 'Escape') {
     const modals = document.querySelectorAll('.modal.show');
     modals.forEach(modal => {
       modal.classList.remove('show');
     });
+    resetForm();
   }
 });
+
+// 响应式处理
+window.addEventListener('resize', () => {
+  const isMobile = window.innerWidth <= 768;
+  const sidebar = document.getElementById('sidebar');
+  const mainContent = document.getElementById('mainContent');
+  
+  if (isMobile) {
+    // 移动端始终展开侧边栏
+    sidebar.classList.remove('collapsed');
+    mainContent.classList.remove('collapsed');
+  }
+});
+
+// 初始化时检查屏幕尺寸
+window.dispatchEvent(new Event('resize'));
