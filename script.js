@@ -1,4 +1,4 @@
-// 苹果+微信兼容：IndexedDB前缀兼容、事件绑定优化
+// IndexedDB 数据库配置
 const DB_NAME = 'NotesDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'notes';
@@ -6,58 +6,27 @@ const STORE_NAME = 'notes';
 // 全局变量
 let currentCategory = '';
 let editingNoteId = null;
-// 苹果浏览器兼容：判断是否为微信内置浏览器
-const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
-// 苹果浏览器兼容：判断是否为iOS设备
-const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-// 初始化数据库：增加苹果/微信IndexedDB兼容处理
+// 初始化数据库
 function initDB() {
   return new Promise((resolve, reject) => {
-    // 解决iOS IndexedDB打开失败问题
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     
-    request.onerror = (e) => {
-      console.error('IndexedDB初始化失败:', e.target.error);
-      // 微信/iOS兼容：重新尝试打开数据库
-      if (isWeChat || isIOS) {
-        indexedDB.deleteDatabase(DB_NAME);
-        setTimeout(() => initDB().then(resolve).catch(reject), 500);
-      } else {
-        reject(e.target.error);
-      }
-    };
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
     
-    request.onsuccess = (e) => {
-      const db = e.target.result;
-      // 解决iOS IndexedDB连接丢失问题
-      db.onversionchange = () => {
-        db.close();
-        alert('数据库更新，请刷新页面重试');
-      };
-      resolve(db);
-    };
-    
-    request.onupgradeneeded = (e) => {
-      const db = e.target.result;
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        // 微信/iOS兼容：创建对象仓库时增加主键兼容
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        // 建立索引，提升查询效率（兼容iOS）
-        store.createIndex('categoryIndex', 'category', { unique: false });
-        store.createIndex('dateIndex', 'createDate', { unique: false });
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
       }
     };
   });
 }
 
-// 数据库操作函数：增加错误重试机制（适配苹果/微信）
+// 数据库操作函数
 async function getDB() {
   if (!window.notesDB) {
-    window.notesDB = await initDB();
-  }
-  // 检查数据库连接状态（适配iOS）
-  if (window.notesDB.closed) {
     window.notesDB = await initDB();
   }
   return window.notesDB;
@@ -68,14 +37,10 @@ async function getAllNotes() {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readonly');
     const store = transaction.objectStore(STORE_NAME);
-    // 微信/iOS兼容：使用getAll替代openCursor，提升性能
     const request = store.getAll();
     
     request.onsuccess = () => resolve(request.result);
-    request.onerror = (e) => {
-      console.error('获取笔记失败:', e.target.error);
-      reject(e.target.error);
-    };
+    request.onerror = () => reject(request.error);
   });
 }
 
@@ -87,11 +52,7 @@ async function saveNoteToDB(note) {
     const request = store.put(note);
     
     request.onsuccess = () => resolve(request.result);
-    request.onerror = (e) => {
-      console.error('保存笔记失败:', e.target.error);
-      // 微信/iOS兼容：重试保存
-      setTimeout(() => saveNoteToDB(note).then(resolve).catch(reject), 500);
-    };
+    request.onerror = () => reject(request.error);
   });
 }
 
@@ -103,77 +64,55 @@ async function deleteNoteFromDB(id) {
     const request = store.delete(id);
     
     request.onsuccess = () => resolve();
-    request.onerror = (e) => {
-      console.error('删除笔记失败:', e.target.error);
-      reject(e.target.error);
-    };
+    request.onerror = () => reject(request.error);
   });
 }
 
-// 主题切换：增加iOS Safari颜色选择器兼容
+// 主题切换
 const themeInput = document.getElementById('themeColor');
 themeInput.addEventListener('input', () => {
-  const color = themeInput.value;
-  document.documentElement.style.setProperty('--primary-color', color);
-  document.documentElement.style.setProperty('--secondary-color', adjustBrightness(color, -20));
-  // 微信/iOS兼容：使用localStorage替代sessionStorage，保证持久化
-  localStorage.setItem('theme', color);
+  document.documentElement.style.setProperty('--primary-color', themeInput.value);
+  document.documentElement.style.setProperty('--secondary-color', adjustBrightness(themeInput.value, -20));
+  localStorage.setItem('theme', themeInput.value);
 });
 
-// 调整颜色亮度：兼容iOS颜色解析
+// 调整颜色亮度
 function adjustBrightness(color, percent) {
-  try {
-    const num = parseInt(color.replace('#', ''), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = Math.min(255, Math.max(0, (num >> 16) + amt));
-    const G = Math.min(255, Math.max(0, (num >> 8 & 0x00FF) + amt));
-    const B = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
-    return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`;
-  } catch (e) {
-    // iOS兼容：解析失败返回默认颜色
-    return color;
-  }
+  const num = parseInt(color.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = (num >> 16) + amt;
+  const G = (num >> 8 & 0x00FF) + amt;
+  const B = (num & 0x0000FF) + amt;
+  return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+    (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
 }
 
-// 加载主题：增加iOS localStorage兼容
+// 加载主题
 window.onload = async () => {
-  // 微信/iOS兼容：解决页面加载延迟问题
-  document.body.style.opacity = '0';
-  setTimeout(() => {
-    document.body.style.opacity = '1';
-    document.body.style.transition = 'opacity 0.3s ease';
-  }, 100);
-
-  // 加载主题色
   const savedTheme = localStorage.getItem('theme') || '#2196F3';
   document.documentElement.style.setProperty('--primary-color', savedTheme);
   document.documentElement.style.setProperty('--secondary-color', adjustBrightness(savedTheme, -20));
   themeInput.value = savedTheme;
   
-  // 初始化应用：增加错误捕获（适配微信/iOS）
-  try {
-    await initApp();
-  } catch (error) {
-    console.error('应用初始化失败:', error);
-    // 微信/iOS友好提示
-    alert(isWeChat ? '微信内初始化失败，建议刷新页面或复制链接到Safari打开' : '初始化失败，请刷新页面重试');
-  }
+  await initApp();
 };
 
-// 初始化应用：简化初始化流程，提升微信/iOS加载速度
+// 初始化应用
 async function initApp() {
-  await renderNotes();
-  await updateCategoryCounts();
-  bindEvents();
-  initializeCategoryFilter();
-  // 微信/iOS兼容：自动展开侧边栏（移动端）
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.add('show');
+  try {
+    await renderNotes();
+    await updateCategoryCounts();
+    bindEvents();
+    initializeCategoryFilter();
+    console.log('应用初始化成功');
+  } catch (error) {
+    console.error('应用初始化失败:', error);
+    alert('应用初始化失败，请刷新页面重试');
   }
-  console.log('应用初始化成功（兼容模式：微信=' + isWeChat + ', iOS=' + isIOS + '）');
 }
 
-// 初始化分类筛选下拉框：保持原有功能
+// 初始化分类筛选下拉框
 function initializeCategoryFilter() {
   const filterSelect = document.getElementById('categoryFilter');
   const categories = ['', '工作', '生活', '学习'];
@@ -187,109 +126,57 @@ function initializeCategoryFilter() {
   });
 }
 
-// 绑定事件：增加iOS触摸事件、微信点击事件兼容
+// 绑定事件
 function bindEvents() {
-  // 侧边栏切换：兼容iOS/微信触摸操作
+  // 侧边栏切换
   document.querySelector('.sidebar-toggle').addEventListener('click', toggleSidebar);
-  document.querySelector('.sidebar-toggle').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    toggleSidebar();
-  }, { passive: false });
   
-  // 搜索功能：增加输入防抖（适配iOS输入法）
-  const mainSearch = document.getElementById('search');
-  const sidebarSearch = document.getElementById('sidebarSearch');
-  let searchTimer = null;
-  const searchHandler = debounce(async () => {
-    if (mainSearch && sidebarSearch) {
-      mainSearch.value = sidebarSearch.value = mainSearch.value || sidebarSearch.value;
-    }
-    await renderNotes();
-  }, 300);
-  mainSearch.addEventListener('input', searchHandler);
-  sidebarSearch.addEventListener('input', searchHandler);
-  // iOS兼容：解决输入法收起后搜索不生效
-  mainSearch.addEventListener('blur', searchHandler);
-  sidebarSearch.addEventListener('blur', searchHandler);
-  
-  // 日期筛选：兼容iOS日期选择器
-  const mainDateFilter = document.getElementById('dateFilter');
-  const sidebarDateFilter = document.getElementById('sidebarDateFilter');
-  mainDateFilter.addEventListener('change', handleDateFilter);
-  sidebarDateFilter.addEventListener('change', handleDateFilter);
-  // iOS兼容：解决日期选择器点击无响应
-  mainDateFilter.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-  sidebarDateFilter.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-  
-  // 分类筛选：保持原有功能
+  // 搜索功能
+  document.getElementById('search').addEventListener('input', handleSearch);
+  document.getElementById('dateFilter').addEventListener('change', handleDateFilter);
   document.getElementById('categoryFilter').addEventListener('change', handleCategoryFilter);
   
-  // 分类点击事件：增加iOS触摸点击兼容
+  // 侧边栏搜索功能
+  const sidebarSearch = document.getElementById('sidebarSearch');
+  const sidebarDateFilter = document.getElementById('sidebarDateFilter');
+  
+  if (sidebarSearch) {
+    sidebarSearch.addEventListener('input', handleSearch);
+  }
+  
+  if (sidebarDateFilter) {
+    sidebarDateFilter.addEventListener('change', handleDateFilter);
+  }
+  
+  // 分类点击事件
   document.querySelectorAll('.category-item').forEach(item => {
     if (!item.classList.contains('add-category')) {
       item.addEventListener('click', () => {
         const category = item.dataset.category;
         selectCategory(category);
       });
-      // iOS触摸事件兼容
-      item.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const category = item.dataset.category;
-        selectCategory(category);
-      }, { passive: false });
     }
   });
-
-  // 悬浮按钮：解决iOS触摸点击穿透
-  document.querySelector('.floating-add-btn').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    showAddDialog();
-  }, { passive: false });
-
-  // 弹窗关闭按钮：兼容iOS触摸操作
-  document.querySelectorAll('.close').forEach(btn => {
-    btn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      btn.click();
-    }, { passive: false });
-  });
-
-  // 按钮点击：解决iOS触摸点击无响应
-  document.querySelectorAll('.btn-cancel, .btn-save').forEach(btn => {
-    btn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      btn.click();
-    }, { passive: false });
-  });
 }
 
-// 防抖函数：解决iOS输入框频繁触发事件
-function debounce(fn, delay) {
-  let timer = null;
-  return function() {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, arguments), delay);
-  };
-}
-
-// 侧边栏切换：兼容iOS/微信布局
+// 侧边栏切换（仅桌面端）
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const mainContent = document.getElementById('mainContent');
   const isMobile = window.innerWidth <= 768;
   
-  if (isMobile) {
-    sidebar.classList.toggle('show');
-  } else {
+  // 仅在桌面端执行折叠/展开操作
+  if (!isMobile) {
     sidebar.classList.toggle('collapsed');
     mainContent.classList.toggle('collapsed');
   }
 }
 
-// 选择分类：保持原有功能
+// 选择分类
 async function selectCategory(category) {
   currentCategory = category;
   
+  // 更新选中状态
   document.querySelectorAll('.category-item').forEach(item => {
     item.classList.remove('active');
     if (item.dataset.category === category) {
@@ -297,6 +184,7 @@ async function selectCategory(category) {
     }
   });
   
+  // 更新标题
   const title = document.getElementById('current-category-title');
   switch(category) {
     case '':
@@ -315,11 +203,30 @@ async function selectCategory(category) {
       title.textContent = category + '笔记';
   }
   
+  // 渲染笔记
   await renderNotes();
 }
 
-// 处理日期筛选：保持原有功能，增加iOS日期格式兼容
+// 处理搜索
+async function handleSearch() {
+  // 同步两个搜索框的值
+  const mainSearch = document.getElementById('search');
+  const sidebarSearch = document.getElementById('sidebarSearch');
+  
+  if (mainSearch && sidebarSearch) {
+    if (event.target === mainSearch) {
+      sidebarSearch.value = mainSearch.value;
+    } else if (event.target === sidebarSearch) {
+      mainSearch.value = sidebarSearch.value;
+    }
+  }
+  
+  await renderNotes();
+}
+
+// 处理日期筛选
 async function handleDateFilter() {
+  // 同步两个日期选择器的值
   const mainDateFilter = document.getElementById('dateFilter');
   const sidebarDateFilter = document.getElementById('sidebarDateFilter');
   
@@ -334,7 +241,7 @@ async function handleDateFilter() {
   await renderNotes();
 }
 
-// 处理分类筛选：保持原有功能
+// 处理分类筛选
 async function handleCategoryFilter() {
   const filterCategory = document.getElementById('categoryFilter').value;
   if (filterCategory) {
@@ -342,37 +249,30 @@ async function handleCategoryFilter() {
   }
 }
 
-// 渲染笔记：优化iOS/微信渲染性能，减少DOM操作
+// 渲染笔记
 async function renderNotes() {
-  try {
-    const notes = await getAllNotes();
-    const searchTerm = document.getElementById('search').value.toLowerCase();
-    const dateFilter = document.getElementById('dateFilter').value;
-    const categoryFilter = document.getElementById('categoryFilter').value;
+  const notes = await getAllNotes();
+  const searchTerm = document.getElementById('search').value.toLowerCase();
+  const dateFilter = document.getElementById('dateFilter').value;
+  const categoryFilter = document.getElementById('categoryFilter').value;
+  
+  // 应用筛选
+  let filteredNotes = notes.filter(note => {
+    // 搜索筛选
+    const matchesSearch = !searchTerm || 
+      note.title.toLowerCase().includes(searchTerm) || 
+      note.content.toLowerCase().includes(searchTerm);
     
-    // 应用筛选：简化逻辑，提升iOS/微信处理速度
-    let filteredNotes = notes.filter(note => {
-      const matchesSearch = !searchTerm || 
-        note.title.toLowerCase().includes(searchTerm) || 
-        note.content.toLowerCase().includes(searchTerm);
-      
-      const matchesDate = !dateFilter || 
-        note.createDate === dateFilter || 
-        (note.createTime && new Date(note.createTime).toISOString().split('T')[0] === dateFilter);
-      
-      const matchesCategory = !currentCategory || note.category === currentCategory;
-      const matchesFilterCategory = !categoryFilter || note.category === categoryFilter;
-      
-      return matchesSearch && matchesDate && matchesCategory && matchesFilterCategory;
-    });
+    // 日期筛选
+    const matchesDate = !dateFilter || 
+      note.createDate === dateFilter || 
+      new Date(note.createTime).toISOString().split('T')[0] === dateFilter;
     
-    // 排序：简化日期处理，兼容iOS日期解析
-    filteredNotes.sort((a, b) => {
-      const dateA = a.createTime ? new Date(a.createTime) : new Date(a.id);
-      const dateB = b.createTime ? new Date(b.createTime) : new Date(b.id);
-      return dateB - dateA;
-    });
+    // 分类筛选
+    const matchesCategory = !currentCategory || note.category === currentCategory;
+    const matchesFilterCategory = !categoryFilter || note.category === categoryFilter;
     
+<<<<<<< HEAD
     // 渲染笔记：使用文档片段，减少iOS/微信重排重绘
     const container = document.getElementById('notesList');
     const fragment = document.createDocumentFragment();
@@ -575,10 +475,34 @@ async function renderNotes() {
   } catch (error) {
     console.error('渲染笔记失败:', error);
     alert('加载笔记失败，请刷新页面');
+=======
+    return matchesSearch && matchesDate && matchesCategory && matchesFilterCategory;
+  });
+  
+  // 按时间倒序排列
+  filteredNotes.sort((a, b) => new Date(b.createTime || b.id) - new Date(a.createTime || a.id));
+  
+  // 渲染笔记卡片
+  const container = document.getElementById('notesList');
+  container.innerHTML = '';
+  
+  if (filteredNotes.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>暂无笔记，点击右下角"+"按钮添加</p>
+      </div>
+    `;
+    return;
+>>>>>>> parent of 0261eef (优化苹果兼容性)
   }
+  
+  filteredNotes.forEach(note => {
+    const card = createNoteCard(note);
+    container.appendChild(card);
+  });
 }
 
-// 创建笔记卡片：增加iOS触摸反馈，解决微信点击穿透
+// 创建笔记卡片
 function createNoteCard(note) {
   const card = document.createElement('div');
   card.className = 'note-card';
@@ -592,56 +516,30 @@ function createNoteCard(note) {
       <span class="note-category-badge">${escapeHtml(note.category || '未分类')}</span>
     </div>
     <div class="note-content">${escapeHtml(note.content)}</div>
-    ${note.img ? `<img src="${note.img}" class="note-image" alt="笔记图片" loading="lazy">` : ''}
+    ${note.img ? `<img src="${note.img}" class="note-image" alt="笔记图片">` : ''}
     <div class="note-footer">
       <div class="note-date">
         <span>📅 ${date}</span>
         ${time ? `<span>⏰ ${time}</span>` : ''}
       </div>
       <div class="note-actions">
-        <button class="note-action-btn" data-id="${note.id}" title="编辑">✏️</button>
-        <button class="note-action-btn" data-id="${note.id}" title="删除">🗑️</button>
+        <button class="note-action-btn" onclick="editNote(${note.id})" title="编辑">✏️</button>
+        <button class="note-action-btn" onclick="deleteNote(${note.id})" title="删除">🗑️</button>
       </div>
     </div>
   `;
   
-  // 点击卡片查看详情：兼容iOS触摸操作，解决微信点击穿透
+  // 点击卡片查看详情
   card.addEventListener('click', (e) => {
     if (!e.target.closest('.note-actions')) {
       showNoteDetail(note);
     }
   });
-  card.addEventListener('touchstart', (e) => {
-    if (!e.target.closest('.note-actions')) {
-      e.preventDefault();
-      showNoteDetail(note);
-    }
-  }, { passive: false });
-  
-  // 编辑/删除按钮：使用事件委托，提升iOS/微信性能
-  card.querySelector('.note-actions').addEventListener('click', (e) => {
-    const id = parseInt(e.target.dataset.id);
-    if (e.target.title === '编辑') {
-      editNote(id);
-    } else if (e.target.title === '删除') {
-      deleteNote(id);
-    }
-  });
-  // iOS触摸事件兼容
-  card.querySelector('.note-actions').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const id = parseInt(e.target.dataset.id);
-    if (e.target.title === '编辑') {
-      editNote(id);
-    } else if (e.target.title === '删除') {
-      deleteNote(id);
-    }
-  }, { passive: false });
   
   return card;
 }
 
-// 显示笔记详情：保持原有功能，增加iOS图片加载兼容
+// 显示笔记详情
 function showNoteDetail(note) {
   const modal = document.getElementById('detailModal');
   const title = document.getElementById('detail-title');
@@ -660,7 +558,7 @@ function showNoteDetail(note) {
         ${time ? `<span class="detail-time">时间：${time}</span>` : ''}
       </p>
       <div class="detail-text">${escapeHtml(note.content).replace(/\n/g, '<br>')}</div>
-      ${note.img ? `<img src="${note.img}" class="detail-image" alt="笔记图片" loading="lazy">` : ''}
+      ${note.img ? `<img src="${note.img}" class="detail-image" alt="笔记图片">` : ''}
       ${note.comments && note.comments.length > 0 ? `
         <div class="detail-comments">
           <h4>评论 (${note.comments.length})</h4>
@@ -671,26 +569,65 @@ function showNoteDetail(note) {
   `;
   
   modal.classList.add('show');
-  // iOS兼容：解决弹窗内滚动不生效
-  modal.querySelector('.modal-content').style.overflowY = 'auto';
-  modal.querySelector('.modal-content').style.webkitOverflowScrolling = 'touch';
 }
 
-// 关闭弹窗：增加iOS/微信兼容，解决弹窗关闭后页面滚动问题
+// 关闭详情对话框
+function closeDetailDialog() {
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+// 显示新增对话框
+function showAddDialog(noteId = null) {
+  const modal = document.getElementById('addModal');
+  const title = document.getElementById('modal-title');
+  const formTitle = document.getElementById('title');
+  const formContent = document.getElementById('content');
+  const formCategory = document.getElementById('noteCategory');
+  const formFile = document.getElementById('imgUpload');
+  
+  editingNoteId = noteId;
+  
+  // 重置表单
+  formTitle.value = '';
+  formContent.value = '';
+  formCategory.value = currentCategory || '工作';
+  formFile.value = '';
+  
+  if (noteId) {
+    title.textContent = '编辑笔记';
+    // 加载笔记数据
+    loadNoteForEdit(noteId);
+  } else {
+    title.textContent = '新增笔记';
+  }
+  
+  modal.classList.add('show');
+}
+
+// 加载笔记进行编辑
+async function loadNoteForEdit(noteId) {
+  const notes = await getAllNotes();
+  const note = notes.find(n => n.id === noteId);
+  
+  if (note) {
+    document.getElementById('title').value = note.title;
+    document.getElementById('content').value = note.content;
+    document.getElementById('noteCategory').value = note.category || '工作';
+  }
+}
+
+// 关闭新增对话框
 function closeAddDialog() {
   document.getElementById('addModal').classList.remove('show');
   editingNoteId = null;
-  // iOS兼容：恢复页面滚动
-  document.body.style.overflow = 'auto';
 }
 
+// 关闭详情对话框
 function closeDetailDialog() {
   document.getElementById('detailModal').classList.remove('show');
-  // iOS兼容：恢复页面滚动
-  document.body.style.overflow = 'auto';
 }
 
-// 保存笔记：增加iOS文件上传兼容，解决微信图片上传失败
+// 保存笔记
 async function saveNote() {
   const title = document.getElementById('title').value.trim();
   const content = document.getElementById('content').value.trim();
@@ -710,6 +647,7 @@ async function saveNote() {
   let img = '';
   let existingNote = null;
   
+  // 如果是编辑模式，先获取现有笔记数据
   if (editingNoteId) {
     const notes = await getAllNotes();
     existingNote = notes.find(n => n.id === editingNoteId);
@@ -718,19 +656,13 @@ async function saveNote() {
     }
   }
   
-  // iOS/微信兼容：处理图片上传，限制文件大小（避免微信崩溃）
+  // 如果有新文件，读取新图片
   if (file) {
     try {
-      // 限制文件大小为5MB（微信/iOS兼容）
-      if (file.size > 5 * 1024 * 1024) {
-        alert('图片大小不能超过5MB，请选择更小的图片');
-        return;
-      }
-      // iOS兼容：使用FileReader同步读取（避免异步失败）
       img = await readFileAsDataURL(file);
     } catch (error) {
       console.error('读取图片文件失败:', error);
-      alert(isWeChat ? '微信内图片上传失败，建议复制链接到Safari打开上传' : '图片文件读取失败，请重试');
+      alert('图片文件读取失败，请重试');
       return;
     }
   }
@@ -762,28 +694,22 @@ async function saveNote() {
   }
 }
 
-// 读取文件：增加iOS/微信兼容，解决文件读取失败
+// 读取文件为DataURL
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = (e) => {
-      console.error('文件读取错误:', e.target.error);
-      reject(e.target.error);
-    };
-    // iOS兼容：使用readAsDataURL（避免readAsBinaryString失败）
+    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-// 编辑笔记：保持原有功能
+// 编辑笔记
 function editNote(noteId) {
   showAddDialog(noteId);
-  // iOS兼容：弹窗内禁止页面滚动
-  document.body.style.overflow = 'hidden';
 }
 
-// 删除笔记：保持原有功能
+// 删除笔记
 async function deleteNote(noteId) {
   if (confirm('确定要删除这条笔记吗？')) {
     await deleteNoteFromDB(noteId);
@@ -792,7 +718,7 @@ async function deleteNote(noteId) {
   }
 }
 
-// 更新分类计数：保持原有功能
+// 更新分类计数
 async function updateCategoryCounts() {
   const notes = await getAllNotes();
   
@@ -809,18 +735,29 @@ async function updateCategoryCounts() {
   document.getElementById('study-count').textContent = counts.study;
 }
 
-// HTML转义：保持原有功能，防止XSS
+// HTML转义
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
-// 点击模态框外部关闭：兼容iOS/微信触摸操作
+// 点击模态框外部关闭
 window.onclick = (event) => {
   const modals = document.querySelectorAll('.modal');
   modals.forEach(modal => {
     if (event.target === modal) {
       modal.classList.remove('show');
-      // iOS兼容：恢复页面滚动
-      document
+    }
+  });
+};
+
+// 按ESC键关闭模态框
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    const modals = document.querySelectorAll('.modal.show');
+    modals.forEach(modal => {
+      modal.classList.remove('show');
+    });
+  }
+});
