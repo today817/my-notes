@@ -645,31 +645,139 @@ function createNoteCard(note) {
     
     card.appendChild(footerDiv);
     
-    // 点击卡片查看详情 - 支持触摸事件
-    const handleCardClick = (e) => {
-      if (!e.target.closest('.note-actions')) {
+    // 更可靠的触摸事件处理方案
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let hasMoved = false;
+    let clickPrevented = false;
+    
+    // 处理触摸开始
+    const handleTouchStart = (e) => {
+      // 如果点击的是操作按钮，不处理
+      if (e.target.closest('.note-actions')) return;
+      
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchStartTime = Date.now();
+      hasMoved = false;
+      clickPrevented = false;
+      
+      // 重置状态
+      card.dataset.touchHandled = 'false';
+    };
+    
+    // 处理触摸移动
+    const handleTouchMove = (e) => {
+      // 如果点击的是操作按钮，不处理
+      if (e.target.closest('.note-actions')) return;
+      
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartX);
+      const deltaY = Math.abs(touch.clientY - touchStartY);
+      
+      // 如果移动距离超过5px，认为是滚动操作
+      if (deltaX > 5 || deltaY > 5) {
+        hasMoved = true;
+        
+        // 标记这个触摸事件已经被处理为滚动
+        card.dataset.touchHandled = 'true';
+        
+        // 如果这是第一次检测到移动，阻止后续的点击事件
+        if (!clickPrevented) {
+          clickPrevented = true;
+          
+          // 立即阻止默认行为，防止滚动时触发点击
+          e.preventDefault();
+        }
+      }
+    };
+    
+    // 处理触摸结束
+    const handleTouchEnd = (e) => {
+      // 如果点击的是操作按钮，不处理
+      if (e.target.closest('.note-actions')) return;
+      
+      const touchEndTime = Date.now();
+      const touchDuration = touchEndTime - touchStartTime;
+      
+      // 只有当没有移动且触摸时间较短时，才认为是点击
+      if (!hasMoved && touchDuration < 300) {
+        // 这是一个有效的点击
+        e.preventDefault();
         showNoteDetail(note);
       }
     };
     
-    card.addEventListener('click', handleCardClick);
-    card.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      handleCardClick(e);
-    }, { passive: false });
+    // 处理点击事件
+    const handleCardClick = (e) => {
+      // 如果点击的是操作按钮，不处理
+      if (e.target.closest('.note-actions')) return;
+      
+      // 检查这个点击是否已经被触摸事件处理过
+      // 或者是否是由触摸滚动触发的虚假点击
+      if (card.dataset.touchHandled === 'true') {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      
+      // 正常的点击事件
+      showNoteDetail(note);
+    };
     
-    // 为编辑和删除按钮添加触摸事件支持
-    editBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      editNote(note.id);
-    }, { passive: false });
+    // 阻止触摸事件冒泡到父元素
+    const handleTouchStopPropagation = (e) => {
+      if (!e.target.closest('.note-actions')) {
+        e.stopPropagation();
+      }
+    };
     
-    deleteBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      deleteNote(note.id);
-    }, { passive: false });
+    // 清除所有现有的事件监听器，避免重复绑定
+    card.replaceWith(card.cloneNode(true));
+    card = card.previousSibling || card;
+    
+    // 重新获取编辑和删除按钮的引用
+    const newEditBtn = card.querySelector('.note-action-btn[title="编辑"]');
+    const newDeleteBtn = card.querySelector('.note-action-btn[title="删除"]');
+    
+    if (newEditBtn) {
+      newEditBtn.onclick = () => editNote(note.id);
+    }
+    
+    if (newDeleteBtn) {
+      newDeleteBtn.onclick = () => deleteNote(note.id);
+    }
+    
+    // 添加新的事件监听器
+    card.addEventListener('touchstart', handleTouchStart, { passive: false });
+    card.addEventListener('touchmove', handleTouchMove, { passive: false });
+    card.addEventListener('touchend', handleTouchEnd, { passive: false });
+    card.addEventListener('touchcancel', () => {
+      hasMoved = false;
+      clickPrevented = false;
+    }, { passive: true });
+    card.addEventListener('click', handleCardClick, { passive: false });
+    
+    // 为编辑和删除按钮添加事件监听器
+    if (newEditBtn) {
+      newEditBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editNote(note.id);
+      }, { passive: false });
+    }
+    
+    if (newDeleteBtn) {
+      newDeleteBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteNote(note.id);
+      }, { passive: false });
+    }
+    
+    // 编辑和删除按钮的事件处理已在上方实现
     
     return card;
   } catch (error) {
