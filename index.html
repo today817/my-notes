@@ -2,128 +2,120 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <!-- 苹果手机核心兼容元标签：解决视口、缩放、微信内核适配 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="format-detection" content="telephone=no,email=no">
-  <!-- 微信内置浏览器适配：强制使用最新内核，禁止缓存 -->
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <!-- 微信JS-SDK兼容（解决域名拦截） -->
-  <meta name="referrer" content="no-referrer">
-  <title>轻记个人笔记管理系统V1.0</title>
-  <link rel="stylesheet" href="style.css?v=1.0.1"> <!-- 加版本号禁止缓存 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#2196F3">
+  <title>我的笔记</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- 顶部导航栏 -->
-    <div class="top-bar">
-      <div class="top-left">
-        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-        <h1>轻记</h1>
+<div class="app-container" id="appContainer">
+  <!-- 顶部工具栏 -->
+  <div class="top-bar">
+    <div class="top-left">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <h1>个人笔记系统</h1>
+    </div>
+    <div class="top-right">
+      <input type="text" id="search" placeholder="搜索内容输入" class="search-input">
+      <input type="date" id="dateFilter" placeholder="选择日期" class="date-input">
+      <select id="categoryFilter" class="category-select">
+        <option value="">选择分类</option>
+      </select>
+      <input type="color" id="themeColor" value="#2196F3" class="theme-picker">
+    </div>
+  </div>
+
+  <!-- 左侧可折叠侧边栏 -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <!-- 搜索区域 -->
+      <div class="sidebar-search">
+        <input type="text" id="sidebarSearch" placeholder="搜索内容" class="sidebar-search-input">
+        <input type="date" id="sidebarDateFilter" placeholder="选择日期" class="sidebar-date-input">
       </div>
-      <div class="top-right">
-        <input type="text" id="search" placeholder="搜索内容" class="search-input" autocomplete="off">
-        <input type="date" id="dateFilter" placeholder="选择日期" class="date-input">
-        <select id="categoryFilter" class="category-select">
-          <option value="">选择分类</option>
+    </div>
+    <div class="sidebar-content">
+      <div class="category-item active" data-category="">
+        <span class="category-icon">📋</span>
+        <span class="category-name">全部笔记</span>
+        <span class="category-count" id="total-count">0</span>
+      </div>
+      <div class="category-item" data-category="工作">
+        <span class="category-icon">💼</span>
+        <span class="category-name">工作</span>
+        <span class="category-count" id="work-count">0</span>
+      </div>
+      <div class="category-item" data-category="生活">
+        <span class="category-icon">🏠</span>
+        <span class="category-name">生活</span>
+        <span class="category-count" id="life-count">0</span>
+      </div>
+      <div class="category-item" data-category="学习">
+        <span class="category-icon">📚</span>
+        <span class="category-name">学习</span>
+        <span class="category-count" id="study-count">0</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 主内容区域 -->
+  <div class="main-content" id="mainContent">
+    <div class="content-header">
+      <h2 id="current-category-title">全部笔记</h2>
+    </div>
+    <div class="notes-grid" id="notesList"></div>
+  </div>
+
+  <!-- 悬浮新增按钮 -->
+  <button class="floating-add-btn" onclick="showAddDialog()">+</button>
+  
+
+
+  <!-- 新增/编辑笔记对话框 -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">新增笔记</h3>
+        <span class="close" onclick="closeAddDialog()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="title" placeholder="笔记标题" class="form-input">
+        <textarea id="content" placeholder="笔记内容" class="form-textarea"></textarea>
+        <select id="noteCategory" class="form-select">
           <option value="工作">工作</option>
           <option value="生活">生活</option>
           <option value="学习">学习</option>
         </select>
-        <input type="color" id="themeColor" value="#2196F3" class="theme-picker">
+        <input type="file" id="imgUpload" accept="image/*" class="form-file">
       </div>
-    </div>
-
-    <!-- 侧边栏 -->
-    <div class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <input type="text" id="sidebarSearch" placeholder="搜索笔记" class="sidebar-search-input" autocomplete="off">
-        <input type="date" id="sidebarDateFilter" placeholder="筛选日期" class="sidebar-date-input">
-      </div>
-      <div class="sidebar-content">
-        <div class="category-item active" data-category="">
-          <span class="category-icon">📋</span>
-          <span class="category-name">全部笔记</span>
-          <span class="category-count" id="total-count">0</span>
-        </div>
-        <div class="category-item" data-category="工作">
-          <span class="category-icon">💼</span>
-          <span class="category-name">工作</span>
-          <span class="category-count" id="work-count">0</span>
-        </div>
-        <div class="category-item" data-category="生活">
-          <span class="category-icon">🏠</span>
-          <span class="category-name">生活</span>
-          <span class="category-count" id="life-count">0</span>
-        </div>
-        <div class="category-item" data-category="学习">
-          <span class="category-icon">📚</span>
-          <span class="category-name">学习</span>
-          <span class="category-count" id="study-count">0</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 主内容区 -->
-    <div class="main-content" id="mainContent">
-      <div class="content-header">
-        <h2 id="current-category-title">全部笔记</h2>
-      </div>
-      <div class="notes-grid" id="notesList"></div>
-    </div>
-
-    <!-- 悬浮新增按钮 -->
-    <button class="floating-add-btn" onclick="showAddDialog()">+</button>
-
-    <!-- 新增/编辑笔记弹窗 -->
-    <div class="modal" id="addModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 id="modal-title">新增笔记</h3>
-          <span class="close" onclick="closeAddDialog()">&times;</span>
-        </div>
-        <div class="modal-body">
-          <input type="text" id="title" placeholder="笔记标题" class="form-input" autocomplete="off">
-          <textarea id="content" placeholder="笔记内容" class="form-textarea" autocomplete="off"></textarea>
-          <select id="noteCategory" class="form-select">
-            <option value="工作">工作</option>
-            <option value="生活">生活</option>
-            <option value="学习">学习</option>
-          </select>
-          <input type="file" id="imgUpload" accept="image/*" class="form-file">
-        </div>
-        <div class="modal-footer">
-          <button onclick="closeAddDialog()" class="btn-cancel">取消</button>
-          <button onclick="saveNote()" class="btn-save">保存</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 笔记详情弹窗 -->
-    <div class="modal" id="detailModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 id="detail-title">笔记详情</h3>
-          <span class="close" onclick="closeDetailDialog()">&times;</span>
-        </div>
-        <div class="modal-body" id="noteDetail"></div>
-        <div class="modal-footer">
-          <button onclick="closeDetailDialog()" class="btn-cancel">关闭</button>
-        </div>
+      <div class="modal-footer">
+        <button onclick="closeAddDialog()" class="btn-cancel">取消</button>
+        <button onclick="saveNote()" class="btn-save">保存</button>
       </div>
     </div>
   </div>
 
-  <!-- 引入JS，加版本号禁止缓存 -->
-  <script src="script.js?v=1.0.1"></script>
-  <!-- 苹果浏览器触摸事件兼容补丁 -->
-  <script>
-    // 解决苹果浏览器点击延迟问题
-    document.addEventListener('touchstart', function() {}, false);
-  </script>
+  <!-- 笔记详情对话框 -->
+  <div class="modal" id="detailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="detail-title">笔记详情</h3>
+        <span class="close" onclick="closeDetailDialog()">&times;</span>
+      </div>
+      <div class="modal-body" id="noteDetail">
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeDetailDialog()" class="btn-cancel">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
+

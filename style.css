@@ -1,291 +1,355 @@
-/* 根变量：增加Safari兼容前缀 */
-:root {
-  --primary-color: #2196F3;
-  --secondary-color: #1976D2;
-  --background-color: #f5f7fa;
-  --card-background: #ffffff;
-  --text-color: #333333;
-  --light-text: #666666;
-  --border-color: #e0e0e0;
-  --shadow: 0 2px 8px rgba(0,0,0,0.1);
-  --transition: all 0.3s ease;
-}
-
-/* 全局样式：重置Safari默认样式，解决触摸交互 */
+/* 全局样式 */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif; /* 苹果默认中文字体 */
-  -webkit-tap-highlight-color: transparent; /* 取消苹果点击高亮 */
-  -webkit-touch-callout: none; /* 取消苹果长按菜单 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 修复iOS Safari滚动问题 */
+body, html {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  z-index: 1;
+}
+
+/* 修复iOS Safari输入框焦点问题 */
+input, textarea, select {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+/* 修复iOS Safari按钮样式 */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+:root {
+  --primary-color: #2196F3;
+  --secondary-color: #1976D2;
+  --background-color: #f5f7fa;
+  --sidebar-bg: #ffffff;
+  --card-bg: #ffffff;
+  --text-primary: #2c3e50;
+  --text-secondary: #7f8c8d;
+  --border-color: #e1e8ed;
+  --shadow-light: 0 2px 8px rgba(0,0,0,0.1);
+  --shadow-medium: 0 4px 16px rgba(0,0,0,0.12);
+  --border-radius: 8px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 60px;
 }
 
 body {
   background-color: var(--background-color);
-  color: var(--text-color);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased; /* Safari字体抗锯齿 */
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden; /* 解决微信横向滚动 */
+  color: var(--text-primary);
+  overflow-x: hidden;
 }
 
+/* 应用容器 */
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: -webkit-fill-available; /* Safari视口高度兼容 */
+  height: 100vh;
 }
 
-/* 顶部导航栏：适配微信小窗口，解决Safari固定定位 */
+/* 顶部工具栏 */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--primary-color);
-  color: white;
-  padding: 0.8rem 1rem;
-  box-shadow: var(--shadow);
-  position: sticky;
-  top: 0;
+  padding: 12px 24px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-light);
   z-index: 100;
-  position: -webkit-sticky; /* Safari粘性定位兼容 */
-  top: 0;
 }
 
 .top-left {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
+  gap: 12px;
 }
 
 .sidebar-toggle {
-  background: transparent;
+  background: none;
   border: none;
-  color: white;
-  font-size: 1.2rem;
+  font-size: 20px;
   cursor: pointer;
-  padding: 0.2rem 0.5rem;
+  padding: 6px;
   border-radius: 4px;
-  transition: var(--transition);
-  -webkit-transition: var(--transition); /* Safari过渡兼容 */
+  transition: background-color 0.2s;
 }
 
 .sidebar-toggle:hover {
-  background-color: rgba(255,255,255,0.2);
+  background-color: rgba(0,0,0,0.1);
 }
 
-.top-bar h1 {
-  font-size: 1.2rem;
+.top-left h1 {
+  font-size: 20px;
   font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
 }
 
 .top-right {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
-/* 输入框/选择器：解决苹果样式兼容，微信输入错位 */
-.search-input, .date-input, .category-select, .theme-picker {
-  padding: 0.4rem 0.6rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
+.search-input, .date-input, .category-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 14px;
   outline: none;
-  -webkit-appearance: none; /* 取消苹果默认表单样式 */
-  appearance: none;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus, .date-input:focus, .category-select:focus {
+  border-color: var(--primary-color);
 }
 
 .search-input {
-  width: 120px;
-}
-
-.date-input, .category-select {
-  width: 100px;
+  width: 200px;
 }
 
 .theme-picker {
-  width: 40px;
+  width: 32px;
   height: 32px;
-  padding: 0;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
+  padding: 2px;
 }
 
-/* 侧边栏：解决微信折叠/展开卡顿，Safari滚动兼容 */
+/* 主布局 */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 侧边栏 */
 .sidebar {
-  width: 240px;
-  background-color: var(--card-background);
-  border-right: 1px solid var(--border-color);
-  padding: 1rem 0;
-  height: calc(100vh - 60px);
-  height: calc(-webkit-fill-available - 60px); /* Safari高度兼容 */
-  position: fixed;
-  left: 0;
-  top: 60px;
-  z-index: 90;
-  overflow-y: auto;
-  transition: var(--transition);
-  -webkit-transition: var(--transition);
-  -webkit-overflow-scrolling: touch; /* Safari弹性滚动 */
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  box-shadow: var(--shadow-light);
+  transition: width 0.3s ease;
+  overflow: hidden;
+  z-index: 99;
 }
 
 .sidebar.collapsed {
-  transform: translateX(-100%);
-  -webkit-transform: translateX(-100%); /* Safari变形兼容 */
+  width: var(--sidebar-collapsed);
 }
 
 .sidebar-header {
-  padding: 0 1rem 1rem;
+  padding: 20px;
   border-bottom: 1px solid var(--border-color);
-  margin-bottom: 1rem;
 }
 
-.sidebar-search-input, .sidebar-date-input {
+.sidebar-search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-search-input,
+.sidebar-date-input {
   width: 100%;
-  margin-bottom: 0.5rem;
-  padding: 0.4rem 0.6rem;
+  padding: 6px 8px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 12px;
+  background: white;
+}
+
+.sidebar-search-input:focus,
+.sidebar-date-input:focus {
   outline: none;
-  -webkit-appearance: none;
-  appearance: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
 }
 
 .sidebar-content {
-  padding: 0 0.5rem;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
+  padding: 12px 0;
 }
 
-/* 分类项：解决苹果触摸点击，微信布局错乱 */
 .category-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 6px;
+  padding: 12px 20px;
   cursor: pointer;
-  transition: var(--transition);
-  -webkit-transition: var(--transition);
-  font-size: 0.9rem;
-  border: 1px solid var(--border-color);
-  background-color: white;
-  touch-action: manipulation; /* 解决苹果触摸延迟 */
-}
-
-.category-item.active {
-  background-color: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
 }
 
 .category-item:hover {
   background-color: rgba(33, 150, 243, 0.1);
 }
 
-.category-item.active:hover {
-  background-color: var(--primary-color);
+.category-item.active {
+  background-color: rgba(33, 150, 243, 0.15);
+  border-left-color: var(--primary-color);
 }
 
-/* 主内容区：适配微信视口，解决Safari网格布局 */
+.category-icon {
+  font-size: 18px;
+  margin-right: 12px;
+  width: 24px;
+  text-align: center;
+}
+
+.category-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.category-count {
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+.add-category {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.add-category:hover {
+  background-color: rgba(33, 150, 243, 0.1);
+}
+
+/* 主内容区域 */
 .main-content {
   flex: 1;
-  padding: 1rem;
-  margin-left: 240px;
-  transition: var(--transition);
-  -webkit-transition: var(--transition);
-  min-height: calc(100vh - 60px);
+  padding: 24px;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
 }
 
 .main-content.collapsed {
-  margin-left: 0;
+  margin-left: var(--sidebar-collapsed);
 }
 
 .content-header {
-  margin-bottom: 1rem;
+  margin-bottom: 24px;
 }
 
 .content-header h2 {
-  font-size: 1.4rem;
+  font-size: 24px;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--text-primary);
 }
 
-/* 笔记网格：解决苹果网格布局兼容，微信移动端适配 */
+/* 笔记网格布局 */
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-  -webkit-grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Safari网格兼容 */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: var(--light-text);
-  font-size: 1rem;
-}
-
-/* 笔记卡片：解决苹果阴影、圆角兼容，触摸交互 */
+/* 笔记卡片 */
 .note-card {
-  background-color: var(--card-background);
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-  -webkit-transition: var(--transition);
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-light);
+  padding: 20px;
   cursor: pointer;
+  transition: all 0.3s;
   border: 1px solid var(--border-color);
-  -webkit-border-radius: 8px; /* Safari圆角兼容 */
-  -webkit-box-shadow: var(--shadow); /* Safari阴影兼容 */
-  touch-action: manipulation;
 }
 
 .note-card:hover {
-  transform: translateY(-4px);
-  -webkit-transform: translateY(-4px); /* Safari变形兼容 */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  -webkit-box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
 }
 
 .note-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.5rem;
+  margin-bottom: 12px;
 }
 
 .note-title {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-color);
-  max-width: 70%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.4;
 }
 
 .note-category-badge {
-  background-color: var(--primary-color);
+  background: var(--primary-color);
   color: white;
-  padding: 0.2rem 0.5rem;
+  padding: 4px 8px;
   border-radius: 4px;
-  font-size: 0.8rem;
-  -webkit-border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .note-content {
-  font-size: 0.9rem;
-  color: var(--light-text);
-  margin-bottom: 0.8rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 12px;
   overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.note-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.note-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.note-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.note-action-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.note-action-btn:hover {
+  background-color: rgba(0,0,0,0.1);
+  color: var(--primary-color);
 }
 
 .note-image {
@@ -293,149 +357,129 @@ body {
   height: 120px;
   object-fit: cover;
   border-radius: 4px;
-  margin-bottom: 0.8rem;
-  -webkit-border-radius: 4px;
+  margin-bottom: 12px;
 }
 
-.note-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.8rem;
-  color: var(--light-text);
-}
-
-.note-date {
-  display: flex;
-  flex-direction: column;
-}
-
-.note-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.note-action-btn {
-  background: transparent;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-  color: var(--light-text);
-  transition: color 0.2s ease;
-  -webkit-transition: color 0.2s ease;
-  touch-action: manipulation;
-}
-
-.note-action-btn:hover {
-  color: var(--primary-color);
-}
-
-/* 悬浮按钮：解决苹果触摸点击，微信定位偏移 */
+/* 悬浮新增按钮 */
 .floating-add-btn {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: var(--primary-color);
+  bottom: 32px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  background: var(--primary-color);
   color: white;
   border: none;
-  font-size: 2rem;
+  border-radius: 50%;
+  font-size: 24px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  transition: var(--transition);
-  -webkit-transition: var(--transition);
-  -webkit-border-radius: 50%;
-  -webkit-box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  touch-action: manipulation;
-  z-index: 99;
+  box-shadow: var(--shadow-medium);
+  transition: all 0.3s;
+  z-index: 1000;
 }
 
 .floating-add-btn:hover {
-  background-color: var(--secondary-color);
-  transform: scale(1.05);
-  -webkit-transform: scale(1.05);
+  background: var(--secondary-color);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
 }
 
-/* 弹窗：解决苹果定位、滚动兼容，微信弹窗遮挡 */
+/* 模态框样式 */
 .modal {
   display: none;
   position: fixed;
-  top: 0;
+  z-index: 2000;
   left: 0;
+  top: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0,0,0,0.5);
-  z-index: 200;
-  justify-content: center;
-  align-items: center;
-  -webkit-backdrop-filter: blur(4px); /* Safari模糊背景 */
+  background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
 }
 
 .modal.show {
   display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-content {
-  background-color: var(--card-background);
-  border-radius: 8px;
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-medium);
   width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* Safari弹性滚动 */
-  -webkit-border-radius: 8px;
-  box-shadow: var(--shadow);
-  -webkit-box-shadow: var(--shadow);
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
-  font-size: 1.2rem;
+  font-size: 18px;
   font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
 }
 
 .close {
-  font-size: 1.5rem;
+  color: var(--text-secondary);
+  font-size: 24px;
+  font-weight: bold;
   cursor: pointer;
-  color: var(--light-text);
-  transition: color 0.2s ease;
-  -webkit-transition: color 0.2s ease;
-  touch-action: manipulation;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
 }
 
 .close:hover {
-  color: var(--text-color);
+  background-color: rgba(0,0,0,0.1);
+  color: var(--text-primary);
 }
 
 .modal-body {
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  padding: 24px;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
-/* 表单控件：解决苹果输入样式，微信输入高度异常 */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  background-color: #fafbfc;
+}
+
+/* 表单样式 */
 .form-input, .form-textarea, .form-select, .form-file {
   width: 100%;
-  padding: 0.6rem;
+  padding: 12px 16px;
   border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 0.9rem;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  margin-bottom: 16px;
   outline: none;
-  transition: border-color 0.2s ease;
-  -webkit-transition: border-color 0.2s ease;
-  -webkit-appearance: none;
-  appearance: none;
+  transition: border-color 0.2s;
 }
 
 .form-input:focus, .form-textarea:focus, .form-select:focus {
@@ -445,43 +489,37 @@ body {
 .form-textarea {
   min-height: 120px;
   resize: vertical;
-  -webkit-resize: vertical; /* Safari拉伸兼容 */
+  font-family: inherit;
 }
 
 .form-file {
-  border: 1px dashed var(--border-color);
-  background-color: rgba(0,0,0,0.02);
+  border: 2px dashed var(--border-color);
+  background-color: #fafbfc;
   cursor: pointer;
 }
 
-.modal-footer {
-  padding: 1rem;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
+.form-file:hover {
+  border-color: var(--primary-color);
 }
 
-/* 按钮：解决苹果触摸样式，微信按钮点击无响应 */
+/* 按钮样式 */
 .btn-cancel, .btn-save {
-  padding: 0.6rem 1.2rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: var(--transition);
-  -webkit-transition: var(--transition);
+  padding: 10px 20px;
   border: none;
-  touch-action: manipulation;
-  -webkit-border-radius: 4px;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .btn-cancel {
-  background-color: var(--border-color);
-  color: var(--text-color);
+  background-color: #f1f3f4;
+  color: var(--text-primary);
 }
 
 .btn-cancel:hover {
-  background-color: #d0d0d0;
+  background-color: #e8eaed;
 }
 
 .btn-save {
@@ -493,119 +531,474 @@ body {
   background-color: var(--secondary-color);
 }
 
-/* 详情页样式：解决苹果图片展示，文本换行 */
+/* 空状态样式 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin: 0;
+}
+
+/* 详情页面样式 */
 .detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  line-height: 1.6;
 }
 
 .detail-meta {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--light-text);
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: var(--border-radius);
+  font-size: 14px;
 }
 
-.detail-category {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  display: inline-block;
-  -webkit-border-radius: 4px;
+.detail-category, .detail-date, .detail-time {
+  color: var(--text-secondary);
 }
 
 .detail-text {
-  font-size: 1rem;
-  line-height: 1.8;
-  color: var(--text-color);
-  white-space: pre-wrap; /* 保留换行 */
+  font-size: 16px;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  white-space: pre-wrap;
 }
 
 .detail-image {
   width: 100%;
-  max-height: 300px;
-  object-fit: cover;
-  border-radius: 4px;
-  -webkit-border-radius: 4px;
+  max-height: 400px;
+  object-fit: contain;
+  border-radius: var(--border-radius);
+  margin-bottom: 20px;
 }
 
 .detail-comments {
-  margin-top: 1rem;
-  padding-top: 1rem;
   border-top: 1px solid var(--border-color);
+  padding-top: 20px;
 }
 
 .detail-comments h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  margin-bottom: 12px;
+  color: var(--text-primary);
 }
 
-.comment {
-  padding: 0.5rem;
-  background-color: rgba(0,0,0,0.02);
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  -webkit-border-radius: 4px;
-}
-
-/* 移动端适配：专门针对苹果手机/微信小屏优化 */
+/* 响应式设计 */
 @media (max-width: 768px) {
-  .sidebar {
+  .app-container {
+    flex-direction: column;
+    height: 100vh;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  
+  .top-bar {
+    padding: 12px 16px 8px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--card-bg);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .top-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     width: 100%;
-    transform: translateX(-100%);
-    -webkit-transform: translateX(-100%);
   }
-
-  .sidebar.show {
-    transform: translateX(0);
-    -webkit-transform: translateX(0);
+  
+  .top-left h1 {
+    font-size: 18px;
+    font-weight: 600;
+    flex: 1;
   }
-
-  .main-content {
-    margin-left: 0;
-    padding: 0.8rem;
+  
+  .sidebar-toggle {
+    font-size: 20px;
+    padding: 8px;
   }
-
+  
   .top-right {
-    gap: 0.3rem;
+    display: none !important;
   }
-
-  .search-input {
-    width: 90px;
+  
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    transform: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 99;
+    background: var(--sidebar-bg);
   }
-
-  .date-input, .category-select {
-    width: 80px;
+  
+  .sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
   }
-
+  
+  .sidebar-search {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .sidebar-search-input,
+  .sidebar-date-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    background: white;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  .sidebar-content {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 8px;
+    gap: 8px;
+  }
+  
+  .category-item {
+    flex: 1;
+    min-width: calc(25% - 6px);
+    max-width: calc(25% - 6px);
+    padding: 12px 8px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    background: white;
+    justify-content: center;
+    text-align: center;
+    border-left: none;
+    border-bottom: none;
+    transition: all 0.2s ease;
+  }
+  
+  .category-item.active {
+    background-color: rgba(33, 150, 243, 0.15);
+    border-color: var(--primary-color);
+    border-left: none;
+  }
+  
+  .category-icon {
+    margin-right: 4px;
+    font-size: 16px;
+    width: auto;
+  }
+  
+  .category-name {
+    font-size: 12px;
+    font-weight: 500;
+    flex: none;
+  }
+  
+  .category-count {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 10px;
+    min-width: 20px;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--background-color);
+  }
+  
+  .content-header h2 {
+    font-size: 20px;
+    margin: 0 0 16px 0;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  
   .notes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    -webkit-grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 0.6rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
-
-  .floating-add-btn {
-    width: 50px;
-    height: 50px;
-    font-size: 1.8rem;
-    bottom: 1.5rem;
-    right: 1.5rem;
-  }
-
+  
   .note-card {
-    padding: 0.8rem;
+    padding: 16px;
+    border-radius: var(--border-radius);
+    min-height: auto;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
   }
-
+  
+  .note-card:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  .note-header {
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  
   .note-title {
-    font-size: 1rem;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.4;
+    color: var(--text-primary);
+    flex: 1;
+    margin-right: 8px;
   }
-
+  
+  .note-category-badge {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  
   .note-content {
-    font-size: 0.8rem;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text-secondary);
+  }
+  
+  .note-footer {
+    margin-top: 12px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+  }
+  
+  .note-date {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .note-actions {
+    gap: 8px;
+  }
+  
+  .note-action-btn {
+    padding: 6px;
+    font-size: 14px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .note-action-btn:active {
+    background-color: rgba(0,0,0,0.1);
+    color: var(--primary-color);
+  }
+  
+  .empty-state {
+    padding: 40px 16px;
+    text-align: center;
+  }
+  
+  .empty-state p {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  
+  .floating-add-btn {
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    font-size: 24px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: var(--shadow-medium);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  .floating-add-btn:active {
+    transform: scale(0.9);
+    transition: transform 0.1s ease;
+  }
+  
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  
+  .modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  
+  .modal-content {
+    width: 100%;
+    max-width: 500px;
+    margin: 0;
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-medium);
+    max-height: 90vh;
+    overflow: hidden;
+    animation: modalSlideIn 0.3s ease;
+  }
+  
+  .modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+    background-color: #fafbfc;
+  }
+  
+  .form-input, .form-textarea, .form-select, .form-file {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    background: white;
+  }
+  
+  .form-input:focus, .form-textarea:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+  }
+  
+  .btn-cancel, .btn-save {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  .btn-cancel:active, .btn-save:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+  
+  .detail-meta {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius);
+    margin-bottom: 16px;
+  }
+  
+  .detail-text {
+    font-size: 16px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: var(--text-primary);
+  }
+  
+  .detail-image {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: var(--border-radius);
+    margin-bottom: 16px;
   }
 }
+
+/* 平板设备适配 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+  
+  .sidebar.collapsed {
+    width: 60px;
+  }
+  
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  
+  .main-content {
+    padding: 20px;
+  }
+}
+
+/* 桌面端优化 */
+@media (min-width: 1025px) {
+  .app-container {
+    max-width: 1400px;
+    margin: 10px auto;
+    height: calc(100vh - 20px);
+  }
+  
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  }
+}
+
+/* 侧边栏动画 */
+.sidebar {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
