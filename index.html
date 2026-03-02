@@ -1,178 +1,121 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="format-detection" content="telephone=no">
-    <meta name="msapplication-tap-highlight" content="no">
-    <title>我的笔记</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#2196F3">
+  <title>我的笔记</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- 侧边栏 -->
-        <aside id="sidebar" class="sidebar">
-            <div class="sidebar-header">
-                <h1 class="app-title">我的笔记</h1>
-                <button class="sidebar-toggle" title="折叠/展开侧边栏">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </div>
-            
-            <div class="sidebar-content">
-                <!-- 搜索框 -->
-                <div class="search-section">
-                    <input type="text" id="sidebarSearch" placeholder="搜索笔记..." class="search-input">
-                </div>
-                
-                <!-- 日期筛选 -->
-                <div class="filter-section">
-                    <input type="date" id="sidebarDateFilter" class="date-filter">
-                </div>
-                
-                <!-- 分类列表 -->
-                <div class="categories-section">
-                    <h3 class="section-title">分类</h3>
-                    <ul class="category-list">
-                        <li class="category-item active" data-category="">
-                            <span class="category-name">全部</span>
-                            <span class="category-count">0</span>
-                        </li>
-                        <li class="category-item" data-category="工作">
-                            <span class="category-name">工作</span>
-                            <span class="category-count">0</span>
-                        </li>
-                        <li class="category-item" data-category="生活">
-                            <span class="category-name">生活</span>
-                            <span class="category-count">0</span>
-                        </li>
-                        <li class="category-item" data-category="学习">
-                            <span class="category-name">学习</span>
-                            <span class="category-count">0</span>
-                        </li>
-                    </ul>
-                </div>
-                
-                <!-- 设置 -->
-                <div class="settings-section">
-                    <h3 class="section-title">设置</h3>
-                    <div class="setting-item">
-                        <label for="themeColor">主题颜色:</label>
-                        <input type="color" id="themeColor" value="#2196F3" class="theme-color-input">
-                    </div>
-                </div>
-            </div>
-        </aside>
-        
-        <!-- 主内容区 -->
-        <main id="mainContent" class="main-content">
-            <div class="main-header">
-                <h2 id="current-category-title" class="current-category-title">全部笔记</h2>
-                <div class="header-actions">
-                    <input type="text" id="search" placeholder="搜索笔记..." class="search-input main-search">
-                    <input type="date" id="dateFilter" class="date-filter main-date-filter">
-                    <select id="categoryFilter" class="category-filter">
-                        <option value="">选择分类</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- 笔记列表 -->
-            <div id="notesList" class="notes-list">
-                <div class="empty-state">
-                    <p>暂无笔记</p>
-                    <button onclick="showAddDialog()" class="add-note-btn">
-                        <i class="fas fa-plus"></i> 添加笔记
-                    </button>
-                </div>
-            </div>
-            
-            <!-- 悬浮添加按钮 -->
-            <button class="floating-add-btn" title="添加笔记">
-                <i class="fas fa-plus"></i>
-            </button>
-            
-            <!-- 移动端导航栏 -->
-            <nav class="mobile-nav">
-                <button class="mobile-nav-btn" data-action="search">
-                    <i class="fas fa-search"></i>
-                    <span>搜索</span>
-                </button>
-                <button class="mobile-nav-btn" data-action="add">
-                    <i class="fas fa-plus"></i>
-                    <span>添加</span>
-                </button>
-                <button class="mobile-nav-btn" data-action="filter">
-                    <i class="fas fa-filter"></i>
-                    <span>筛选</span>
-                </button>
-            </nav>
-        </main>
+<div class="app-container" id="appContainer">
+  <!-- 顶部工具栏 -->
+  <div class="top-bar">
+    <div class="top-left">
+      <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+      <h1>个人笔记系统</h1>
     </div>
-    
-    <!-- 添加/编辑笔记模态框 -->
-    <div id="noteModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">添加笔记</h3>
-                <button class="close" title="关闭">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="noteTitle">标题:</label>
-                    <input type="text" id="noteTitle" placeholder="请输入笔记标题" class="form-input">
-                </div>
-                <div class="form-group">
-                    <label for="noteContent">内容:</label>
-                    <textarea id="noteContent" placeholder="请输入笔记内容" rows="8" class="form-textarea"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="noteCategory">分类:</label>
-                    <select id="noteCategory" class="form-select">
-                        <option value="工作">工作</option>
-                        <option value="生活">生活</option>
-                        <option value="学习">学习</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelNote" class="btn btn-secondary">取消</button>
-                <button id="saveNote" class="btn btn-primary">保存</button>
-            </div>
-        </div>
+    <div class="top-right">
+      <input type="text" id="search" placeholder="搜索内容输入" class="search-input">
+      <input type="date" id="dateFilter" placeholder="选择日期" class="date-input">
+      <select id="categoryFilter" class="category-select">
+        <option value="">选择分类</option>
+      </select>
+      <input type="color" id="themeColor" value="#2196F3" class="theme-picker">
     </div>
-    
-    <!-- 查看笔记模态框 -->
-    <div id="viewModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">笔记详情</h3>
-                <button class="close" title="关闭">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="note-detail">
-                    <div class="note-meta">
-                        <span class="note-category category-work">工作</span>
-                        <span class="note-date">2024-01-01</span>
-                    </div>
-                    <div class="note-full-content">
-                        <p class="modal-content"></p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="close btn btn-secondary">关闭</button>
-            </div>
-        </div>
+  </div>
+
+  <!-- 左侧可折叠侧边栏 -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <!-- 搜索区域 -->
+      <div class="sidebar-search">
+        <input type="text" id="sidebarSearch" placeholder="搜索内容" class="sidebar-search-input">
+        <input type="date" id="sidebarDateFilter" placeholder="选择日期" class="sidebar-date-input">
+      </div>
     </div>
-    
-    <script src="script.js"></script>
+    <div class="sidebar-content">
+      <div class="category-item active" data-category="">
+        <span class="category-icon">📋</span>
+        <span class="category-name">全部笔记</span>
+        <span class="category-count" id="total-count">0</span>
+      </div>
+      <div class="category-item" data-category="工作">
+        <span class="category-icon">💼</span>
+        <span class="category-name">工作</span>
+        <span class="category-count" id="work-count">0</span>
+      </div>
+      <div class="category-item" data-category="生活">
+        <span class="category-icon">🏠</span>
+        <span class="category-name">生活</span>
+        <span class="category-count" id="life-count">0</span>
+      </div>
+      <div class="category-item" data-category="学习">
+        <span class="category-icon">📚</span>
+        <span class="category-name">学习</span>
+        <span class="category-count" id="study-count">0</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 主内容区域 -->
+  <div class="main-content" id="mainContent">
+    <div class="content-header">
+      <h2 id="current-category-title">全部笔记</h2>
+    </div>
+    <div class="notes-grid" id="notesList"></div>
+  </div>
+
+  <!-- 悬浮新增按钮 -->
+  <button class="floating-add-btn" onclick="showAddDialog()">+</button>
+  
+
+
+  <!-- 新增/编辑笔记对话框 -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">新增笔记</h3>
+        <span class="close" onclick="closeAddDialog()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="title" placeholder="笔记标题" class="form-input">
+        <textarea id="content" placeholder="笔记内容" class="form-textarea"></textarea>
+        <select id="noteCategory" class="form-select">
+          <option value="工作">工作</option>
+          <option value="生活">生活</option>
+          <option value="学习">学习</option>
+        </select>
+        <input type="file" id="imgUpload" accept="image/*" class="form-file">
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeAddDialog()" class="btn-cancel">取消</button>
+        <button onclick="saveNote()" class="btn-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 笔记详情对话框 -->
+  <div class="modal" id="detailModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="detail-title">笔记详情</h3>
+        <span class="close" onclick="closeDetailDialog()">&times;</span>
+      </div>
+      <div class="modal-body" id="noteDetail">
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeDetailDialog()" class="btn-cancel">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
+
